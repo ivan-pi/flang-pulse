@@ -24,6 +24,12 @@ database — the committed JSON *is* the database.
 - commits per month
 - active contributors per month
 - source size over time (`cloc`, with a per-language breakdown)
+- **not-yet-implemented markers** over time (`TODO(…)` / `TODONYI(…)` /
+  "not yet implemented") — a *falling* count means unimplemented Fortran
+  constructs are being filled in. A feature-completeness proxy that LOC and
+  churn can't give you.
+- **test-suite size** over time (number of lit test files) — rises as verified
+  behaviour is added.
 - all-time scale: total commits, distinct contributors, project age
 
 LLVM `X.Y.0` releases are drawn as dashed vertical markers across every time
@@ -57,7 +63,9 @@ writes three datasets:
 - `data/activity.json` — monthly commits / authors / insertions / deletions,
   combined and split per path, plus all-time totals
 - `data/releases.json` — `llvmorg-X.Y.0` tags with dates (the chart markers)
-- `data/loc.json` — current size of both subtrees (`cloc`), appended per run
+- `data/loc.json` — per-run snapshot of both subtrees: `cloc` size, the
+  not-yet-implemented marker count (`nyi`), and the lit test-suite size
+  (`tests`, plus `test_runs` for `RUN:` directives), appended per run
 
 Cloning all of llvm-project is expensive, which is the whole concern. Two
 things keep the cost down:
@@ -127,6 +135,36 @@ python -m http.server 8000
 `ACTIVITY_MONTHS` (default 36) controls how many months of history the
 activity charts cover.
 
+## Backfilling history (one-time, offline)
+
+The weekly collectors only ever capture *now*, so a freshly-seeded dashboard
+shows a single point on the source-size and PR charts. `scripts/backfill.py`
+reconstructs the missing history. It is heavier than a normal run — leave it
+out of CI and run it once by hand.
+
+```bash
+# both phases at once (each is skipped if its inputs are missing)
+LLVM_REPO=/tmp/llvm GITHUB_TOKEN=ghp_xxx python scripts/backfill.py --months 24
+
+# or one at a time
+LLVM_REPO=/tmp/llvm python scripts/backfill.py --only git    # size / NYI / tests
+GITHUB_TOKEN=ghp_xxx python scripts/backfill.py --only prs   # open / merged PRs
+```
+
+- **git phase** walks the clone and re-measures `flang/` + `flang-rt/` at the
+  commit that was HEAD at each month boundary (`cloc` + `git grep`), writing
+  reconstructed monthly points into `data/loc.json`. It restores the clone to
+  its original HEAD when done.
+- **prs phase** reconstructs monthly open- and merged-PR counts per label.
+  GitHub keeps every PR's `created:` / `closed:` / `merged:` timestamps
+  forever, so — exactly like the open-issue backfill — open(*m*) = created
+  before *m* − closed before *m*, and merged(*m*) = merged before *m*. Exact,
+  not interpolated. (This is why PR history *can* be reconstructed even though
+  the search API only reports current totals.)
+
+Both phases are idempotent: months already present are skipped (git) or
+updated in place (prs), so re-running is safe.
+
 ## Adjusting cadence
 
 Edit the `cron` in `.github/workflows/collect.yml`. `17 6 * * 1,4` is Monday
@@ -138,7 +176,8 @@ run just means one fewer point.
 
 ```
 scripts/collect.py            issue/PR collector (GitHub Search API)
-scripts/git_stats.py          git-log collector (churn / contributors / releases / size)
+scripts/git_stats.py          git-log collector (churn / contributors / releases / size / NYI / tests)
+scripts/backfill.py           one-time offline history backfill (size+NYI+tests, and PRs)
 data/labels.json              tracked labels (edit this)
 data/history.json             accumulated issue/PR series (machine-written)
 data/activity.json            monthly churn/commits/contributors (machine-written)
