@@ -80,6 +80,14 @@
   .caveat{color:var(--dim);font-size:12.5px;line-height:1.55;margin:16px 0 0;max-width:80ch;}
   .caveat em{color:var(--ink);font-style:normal;font-family:var(--mono);font-size:11.5px;}
   .empty{padding:60px 20px;text-align:center;color:var(--faint);font-family:var(--mono);font-size:13px;}
+  .rel-line{stroke:var(--faint);stroke-width:1;stroke-dasharray:3 3;opacity:.45;}
+  .rel-text{fill:var(--faint);font-family:var(--mono);font-size:9px;opacity:.8;}
+  .scale{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:12px;margin-bottom:22px;}
+  .scard{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:16px;}
+  .scard .k{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.1em;}
+  .scard .v{font-family:var(--mono);font-size:24px;font-weight:700;line-height:1;margin-top:12px;color:var(--ink);}
+  .scard .s{color:var(--dim);font-size:12px;margin-top:8px;}
   footer{color:var(--faint);font-size:12px;text-align:center;padding-top:18px;
     border-top:1px solid var(--line);font-family:var(--mono);line-height:1.6;}
   footer a{color:var(--dim);}
@@ -123,6 +131,45 @@
     </p>
   </section>
 
+  <div class="scale" id="scale" hidden></div>
+
+  <section class="panel" id="activity-panel" hidden>
+    <div class="panel-head">
+      <h2 id="activity-title">Lines changed per month</h2>
+      <div class="metric-switch" id="activity-switch">
+        <button data-metric="churn" class="on">lines changed</button>
+        <button data-metric="commits">commits</button>
+        <button data-metric="authors">contributors</button>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <svg class="chart" id="activity-chart" viewBox="0 0 720 300" role="img" aria-label="Monthly development activity"></svg>
+    </div>
+    <div class="legend" id="activity-legend"></div>
+    <p class="caveat">
+      Volume of change flowing into <em>flang/</em> + <em>flang-rt/</em>, from
+      <em>git log --numstat</em>. Rising commits / lines / contributors mean
+      development is accelerating; falling means it is cooling off. Dashed
+      verticals mark LLVM <em>X.Y.0</em> releases.
+    </p>
+  </section>
+
+  <section class="panel" id="loc-panel" hidden>
+    <div class="panel-head">
+      <h2>Source size · <span style="font-family:var(--mono);color:var(--sig)">flang/</span></h2>
+      <div class="meta" id="loc-now">—</div>
+    </div>
+    <div class="chart-wrap">
+      <svg class="chart" id="loc-chart" viewBox="0 0 720 280" role="img" aria-label="Lines of code over time"></svg>
+    </div>
+    <div class="legend" id="loc-langs"></div>
+    <p class="caveat">
+      Total lines of code in the <em>flang/</em> subtree of llvm/llvm-project,
+      counted with <em>cloc</em> from a sparse checkout each run. Points are exact
+      snapshots; the series builds forward from the first collection.
+    </p>
+  </section>
+
   <footer id="footer">
     Data collected daily via GitHub Actions · counts from the GitHub REST API.
     Not affiliated with the LLVM project.
@@ -137,8 +184,27 @@ const METRICS = {
 let DATA = null;
 let metric = "open_issues";
 const hidden = new Set();
+let REL = [];          // release tags, for chart markers
+let ACT = null;        // git activity dataset
+let actMetric = "churn";
+let LATEST_LOC = null;  // newest size snapshot, shared with the scale cards
 
 const fmt = (n) => n == null ? "––" : n.toLocaleString("en-US");
+
+// The site is served two ways: locally as /site/index.html (data is at
+// ../data/) and on Pages with index.html at the root (data is at data/).
+// Try both so neither layout needs a build step.
+async function fetchJSON(candidates){
+  let lastErr;
+  for(const path of candidates){
+    try{
+      const res = await fetch(path + "?_=" + Date.now());
+      if(res.ok) return await res.json();
+      lastErr = new Error(path + " " + res.status);
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error("not found");
+}
 
 function relTime(iso){
   if(!iso) return "";
@@ -150,9 +216,7 @@ function relTime(iso){
 
 async function boot(){
   try{
-    const res = await fetch("../data/history.json?_=" + Date.now());
-    if(!res.ok) throw new Error("history.json " + res.status);
-    DATA = await res.json();
+    DATA = await fetchJSON(["data/history.json", "../data/history.json"]);
   }catch(e){
     document.getElementById("status").textContent = "NO DATA";
     document.getElementById("chart-wrap").innerHTML =
@@ -248,6 +312,8 @@ function renderChart(){
     g+=`<text x="${x.toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${d.slice(2,7)}</text>`;
   });
 
+  g+=releaseMarkers(dates.map(d=>+new Date(d)), dates.map(d=>xOf(d)), padT, ih);
+
   for(const id of ids){
     const meta=labelMeta(id);
     const s=seriesFor(id, metric);
@@ -325,7 +391,204 @@ document.getElementById("switch").addEventListener("click", (e)=>{
   render();
 });
 
-boot();
+// ── Lines of code panel (data/loc.json) ───────────────────────────────
+const LANG_COLORS = {
+  "C++":"#5aa9f7", "C/C++ Header":"#b48cf2", "Fortran 90":"#39d98a",
+  "Fortran 77":"#4fd1c5", "Python":"#f2b441", "CMake":"#f2685a", "Other":"#7d8da3",
+};
+
+async function bootLoc(){
+  let loc;
+  try{
+    loc = await fetchJSON(["data/loc.json", "../data/loc.json"]);
+  }catch(e){ return; } // no LOC data yet — leave the panel hidden
+  const snaps = (loc.snapshots || []).filter(s => s.code != null);
+  if(!snaps.length) return;
+
+  document.getElementById("loc-panel").hidden = false;
+  const last = snaps[snaps.length-1];
+  LATEST_LOC = last;
+  const prev = snaps.length>=2 ? snaps[snaps.length-2] : null;
+  const delta = prev ? last.code - prev.code : null;
+  const deltaTxt = delta==null ? "" :
+    `<span style="color:${delta>=0?'var(--sig)':'#f2685a'}"> ${delta>=0?'+':''}${fmt(delta)} since last</span>`;
+  document.getElementById("loc-now").innerHTML =
+    `<div style="font-size:22px;color:var(--ink)">${fmt(last.code)} <span style="color:var(--dim);font-size:13px">lines</span></div>` +
+    `<div>${fmt(last.files)} files${deltaTxt}</div>`;
+
+  renderLocChart(snaps);
+  renderLocLangs(last.by_language || {});
+}
+
+function renderLocChart(snaps){
+  const svg=document.getElementById("loc-chart");
+  const W=720,H=280,padL=58,padR=16,padT=16,padB=34;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const vals=snaps.map(s=>s.code);
+  const minV=Math.min(...vals), maxV=Math.max(...vals);
+  const lo=Math.max(0, minV-Math.ceil((maxV-minV)*0.15)-1);
+  const hi=maxV+Math.ceil((maxV-minV)*0.15)+1;
+  const span=hi-lo||1;
+  const xOf=i=> padL + (snaps.length<2?0:(i/(snaps.length-1))*iw);
+  const yOf=v=> padT + ih - ((v-lo)/span)*ih;
+
+  let g="";
+  const ticks=4;
+  for(let i=0;i<=ticks;i++){
+    const v=Math.round(lo+(span*i)/ticks);
+    const y=padT+ih-(i/ticks)*ih;
+    g+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" class="gl"/>`;
+    g+=`<text x="${padL-8}" y="${(y+3).toFixed(1)}" class="axt" text-anchor="end">${fmt(v)}</text>`;
+  }
+  const xstep=Math.ceil(snaps.length/7);
+  snaps.forEach((s,i)=>{
+    if(i%xstep!==0 && i!==snaps.length-1) return;
+    g+=`<text x="${xOf(i).toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${s.date.slice(2,7)}</text>`;
+  });
+  g+=releaseMarkers(snaps.map(s=>+new Date(s.date)), snaps.map((s,i)=>xOf(i)), padT, ih);
+  const path=snaps.map((s,i)=>`${i?'L':'M'}${xOf(i).toFixed(1)} ${yOf(s.code).toFixed(1)}`).join(" ");
+  g+=`<path d="${path}" class="series-line" stroke="var(--sig)"/>`;
+  snaps.forEach((s,i)=>{
+    g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(s.code).toFixed(1)}" r="2.6" fill="var(--sig)"><title>${s.date}: ${fmt(s.code)} lines</title></circle>`;
+  });
+  svg.innerHTML=g;
+}
+
+function renderLocLangs(byLang){
+  const wrap=document.getElementById("loc-langs");
+  const entries=Object.entries(byLang).sort((a,b)=>b[1]-a[1]);
+  wrap.innerHTML = entries.map(([lang,code])=>{
+    const c=LANG_COLORS[lang]||"#7d8da3";
+    return `<button style="cursor:default"><span class="sw" style="background:${c}"></span>${lang}<span class="lv">${fmt(code)}</span></button>`;
+  }).join("");
+}
+
+// Vertical dashed markers at release dates. axisTimes/xs are paired arrays
+// (epoch ms ↔ pixel x) describing the chart's x-axis; a release is placed by
+// linear interpolation between the two surrounding points.
+function releaseMarkers(axisTimes, xs, top, h){
+  if(!REL.length || axisTimes.length<2) return "";
+  const lo=axisTimes[0], hi=axisTimes[axisTimes.length-1];
+  let g="";
+  for(const r of REL){
+    const t=+new Date(r.date);
+    if(t<lo || t>hi) continue;
+    let x=xs[xs.length-1];
+    for(let i=0;i<axisTimes.length-1;i++){
+      if(t>=axisTimes[i] && t<=axisTimes[i+1]){
+        const f=(t-axisTimes[i])/((axisTimes[i+1]-axisTimes[i])||1);
+        x=xs[i]+f*(xs[i+1]-xs[i]); break;
+      }
+    }
+    g+=`<line x1="${x.toFixed(1)}" y1="${top}" x2="${x.toFixed(1)}" y2="${top+h}" class="rel-line"/>`;
+    g+=`<text x="${x.toFixed(1)}" y="${top+9}" class="rel-text" text-anchor="middle">${r.version}</text>`;
+  }
+  return g;
+}
+
+// ── Activity panel (data/activity.json) ───────────────────────────────
+const ACT_METRICS = {
+  churn:   {title:"Lines changed per month",
+            series:[{key:"insertions",color:"#39d98a",label:"added"},
+                    {key:"deletions", color:"#f2685a",label:"removed"}]},
+  commits: {title:"Commits per month",
+            series:[{key:"commits",color:"#5aa9f7",label:"commits"}]},
+  authors: {title:"Active contributors per month",
+            series:[{key:"authors",color:"#f2b441",label:"contributors"}]},
+};
+
+async function bootActivity(){
+  try{
+    ACT = await fetchJSON(["data/activity.json", "../data/activity.json"]);
+  }catch(e){ return; }
+  if(!ACT.months || !ACT.months.length) return;
+  document.getElementById("activity-panel").hidden = false;
+  renderScale();
+  renderActivity();
+}
+
+function renderScale(){
+  const t = ACT.totals || {};
+  const loc = LATEST_LOC;
+  const recent = ACT.months.slice(-12);
+  const churn12 = recent.reduce((a,m)=>a+(m.churn||0),0);
+  const since = t.first_commit ? t.first_commit.slice(0,4) : "—";
+  const cards = [
+    {k:"COMMITS", v:fmt(t.commits), s:`to flang/ + flang-rt/ since ${since}`},
+    {k:"CONTRIBUTORS", v:fmt(t.authors), s:"distinct authors, all-time"},
+    {k:"LINES CHANGED · 12MO", v:fmt(churn12), s:"added + removed, last 12 months"},
+    {k:"SIZE", v:loc?fmt(loc.code):"—", s:loc?`lines across ${fmt(loc.files)} files`:"—"},
+  ];
+  document.getElementById("scale").hidden = false;
+  document.getElementById("scale").innerHTML = cards.map(c=>
+    `<div class="scard"><div class="k">${c.k}</div><div class="v">${c.v}</div><div class="s">${c.s}</div></div>`
+  ).join("");
+}
+
+function renderActivity(){
+  const cfg = ACT_METRICS[actMetric];
+  document.getElementById("activity-title").textContent = cfg.title;
+  const svg=document.getElementById("activity-chart");
+  const W=720,H=300,padL=58,padR=16,padT=18,padB=34;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const months=ACT.months;
+  const xOf=i=> padL + (months.length<2?0:(i/(months.length-1))*iw);
+
+  let maxV=0;
+  for(const m of months) for(const s of cfg.series) maxV=Math.max(maxV, m[s.key]||0);
+  const hi=maxV+Math.ceil(maxV*0.12)+1;
+  const yOf=v=> padT + ih - (v/hi)*ih;
+
+  let g="";
+  const ticks=4;
+  for(let i=0;i<=ticks;i++){
+    const v=Math.round((hi*i)/ticks);
+    const y=padT+ih-(i/ticks)*ih;
+    g+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" class="gl"/>`;
+    g+=`<text x="${padL-8}" y="${(y+3).toFixed(1)}" class="axt" text-anchor="end">${fmt(v)}</text>`;
+  }
+  const xstep=Math.ceil(months.length/8);
+  months.forEach((m,i)=>{
+    if(i%xstep!==0 && i!==months.length-1) return;
+    g+=`<text x="${xOf(i).toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${m.month.slice(2)}</text>`;
+  });
+
+  g+=releaseMarkers(months.map(m=>+new Date(m.month+"-01")), months.map((m,i)=>xOf(i)), padT, ih);
+
+  for(const s of cfg.series){
+    const path=months.map((m,i)=>`${i?'L':'M'}${xOf(i).toFixed(1)} ${yOf(m[s.key]||0).toFixed(1)}`).join(" ");
+    g+=`<path d="${path}" class="series-line" stroke="${s.color}"/>`;
+    months.forEach((m,i)=>{
+      g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(m[s.key]||0).toFixed(1)}" r="2.2" fill="${s.color}"><title>${m.month}: ${fmt(m[s.key]||0)} ${s.label}</title></circle>`;
+    });
+  }
+  svg.innerHTML=g;
+
+  document.getElementById("activity-legend").innerHTML = cfg.series.map(s=>
+    `<button style="cursor:default"><span class="sw" style="background:${s.color}"></span>${s.label}</button>`
+  ).join("");
+}
+
+document.getElementById("activity-switch").addEventListener("click",(e)=>{
+  const btn=e.target.closest("button"); if(!btn) return;
+  actMetric=btn.dataset.metric;
+  document.querySelectorAll("#activity-switch button").forEach(x=>x.classList.toggle("on",x===btn));
+  renderActivity();
+});
+
+async function loadReleases(){
+  try{ const r=await fetchJSON(["data/releases.json","../data/releases.json"]);
+       REL = r.releases || []; }
+  catch(e){ REL = []; }
+}
+
+async function start(){
+  await loadReleases();   // markers need REL before any chart renders
+  await boot();           // issues / PRs
+  await bootLoc();        // source size (attaches latest size to ACT._loc)
+  await bootActivity();   // churn / commits / contributors + scale cards
+}
+start();
 </script>
 </body>
 </html>

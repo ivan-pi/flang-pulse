@@ -1,0 +1,105 @@
+name: collect-and-deploy
+
+# Twice a week (Mon & Thu, 06:17 UTC) plus a manual trigger. The first run
+# does the issue/PR backfill and the first blobless clone of llvm-project,
+# so it takes a few minutes; later runs fetch incrementally and finish fast.
+on:
+  schedule:
+    - cron: "17 6 * * 1,4"
+  workflow_dispatch:
+
+# contents:write   -> commit the refreshed data/*.json back to the repo
+# pages:write/id-token -> deploy the static dashboard to GitHub Pages
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Never let two runs deploy Pages at once; let an in-flight run finish.
+concurrency:
+  group: collect-and-deploy
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install cloc
+        run: sudo apt-get update && sudo apt-get install -y cloc
+
+      - name: Collect label metrics (issues / PRs)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/collect.py
+
+      # Cache a blobless clone of llvm-project so the heavy download happens
+      # once. The cache key rotates weekly to keep it from growing without
+      # bound; restore-keys lets a new week warm-start from the previous one.
+      - name: Compute weekly cache key
+        id: week
+        run: echo "week=$(date -u +%G-w%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore llvm-project clone
+        uses: actions/cache@v4
+        with:
+          path: .llvm-cache
+          key: llvm-blobless-${{ steps.week.outputs.week }}
+          restore-keys: |
+            llvm-blobless-
+
+      - name: Clone or update llvm-project (blobless)
+        run: |
+          set -e
+          if [ -d .llvm-cache/.git ]; then
+            echo "updating cached clone"
+            git -C .llvm-cache fetch --filter=blob:none --tags --prune origin
+            git -C .llvm-cache reset --hard origin/main
+          else
+            echo "no cache — full blobless clone (one-time cost)"
+            git clone --filter=blob:none --no-checkout \
+              https://github.com/llvm/llvm-project.git .llvm-cache
+            git -C .llvm-cache sparse-checkout init --cone
+          fi
+
+      - name: Collect git stats (churn / contributors / releases / size)
+        env:
+          LLVM_REPO: .llvm-cache
+        run: python scripts/git_stats.py
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/history.json data/activity.json data/releases.json data/loc.json
+          if git diff --cached --quiet; then
+            echo "no data changes to commit"
+          else
+            git commit -m "data: snapshot $(date -u +%F)"
+            git push
+          fi
+
+      - name: Assemble static site
+        run: |
+          mkdir -p _site/data
+          cp site/index.html _site/index.html
+          cp data/*.json _site/data/ 2>/dev/null || true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: collect
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
