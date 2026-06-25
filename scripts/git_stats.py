@@ -206,7 +206,12 @@ def collect_totals() -> dict:
         commits += 1
 
     proc.stdout.close()
-    proc.wait()
+    rc = proc.wait()
+    if rc != 0:
+        stderr = proc.stderr.read() if proc.stderr else ""
+        print(f"  git log exited with code {rc}: {stderr.strip()}", file=sys.stderr)
+    if proc.stderr:
+        proc.stderr.close()
 
     if not commits:
         return {}
