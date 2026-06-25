@@ -46,21 +46,43 @@ def gh_search(query: str, token: str | None) -> int:
     if token:
         req.add_header("Authorization", f"Bearer {token}")
 
-    for attempt in range(6):
+    auth_retries = 0
+    for attempt in range(8):
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 payload = json.load(resp)
                 return int(payload["total_count"])
         except urllib.error.HTTPError as e:
+            retry_after = e.headers.get("retry-after")
             if e.code in (403, 429):
-                reset = e.headers.get("x-ratelimit-reset")
-                wait = 30
-                if reset:
-                    wait = max(5, int(reset) - int(time.time()) + 2)
+                # Primary or secondary rate limit. Prefer Retry-After, then the
+                # rate-limit reset clock, else a flat backoff.
+                if retry_after:
+                    wait = max(5, int(retry_after) + 1)
+                else:
+                    reset = e.headers.get("x-ratelimit-reset")
+                    wait = max(5, int(reset) - int(time.time()) + 2) if reset else 30
                 wait = min(wait, 90)
                 print(f"  rate-limited; sleeping {wait}s", flush=True)
                 time.sleep(wait)
                 continue
+            if e.code == 401:
+                # The search endpoint intermittently returns a spurious 401
+                # under automated load even when the token is valid. Back off
+                # and retry a few times before giving up, so one blip doesn't
+                # kill a long backfill. A genuinely bad token fails every time
+                # and trips the limit below with a clear message.
+                auth_retries += 1
+                if auth_retries <= 3:
+                    wait = int(retry_after) if retry_after else 8 * auth_retries
+                    print(f"  401 from search (attempt {auth_retries}/3); "
+                          f"retrying in {wait}s", flush=True)
+                    time.sleep(wait)
+                    continue
+                raise RuntimeError(
+                    "GitHub returned 401 Unauthorized repeatedly. Verify the "
+                    "token works:  curl -H \"Authorization: Bearer $GITHUB_TOKEN\""
+                    " https://api.github.com/rate_limit") from e
             if e.code == 422:
                 raise ValueError(f"invalid query/label: {query}") from e
             raise
@@ -126,7 +148,9 @@ def load_json(path: Path, default):
 
 
 def main() -> int:
-    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    # .strip() guards against a trailing newline (e.g. token=$(cat file)),
+    # which makes the Authorization header inconsistent.
+    token = (os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or "").strip() or None
     if not token:
         print("warning: no GITHUB_TOKEN set; running unauthenticated.", flush=True)
 
