@@ -68,8 +68,13 @@ jobs:
           fi
 
       - name: Collect git stats (churn / contributors / releases / size)
+        timeout-minutes: 20
         env:
           LLVM_REPO: .llvm-cache
+          # Collect history from this commit onwards (≈ August 2025).
+          # Set SINCE_COMMIT to an empty string to fall back to ACTIVITY_MONTHS.
+          SINCE_COMMIT: "3623fe6"
+          ACTIVITY_MONTHS: "12"
         run: python scripts/git_stats.py
 
       - name: Commit refreshed data
