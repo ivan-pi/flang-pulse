@@ -4,9 +4,10 @@ A self-updating dashboard that tracks development activity in the
 [LLVM](https://github.com/llvm/llvm-project) Fortran stack — per label
 (`flang`, `flang:ir`, `flang:openmp`, `openmp`, `openacc`, and so on).
 
-A GitHub Action snapshots issue and PR counts every other day, appends them
-to `data/history.json`, and deploys a static site that graphs each metric
-over time. No server, no database — the committed JSON *is* the database.
+A GitHub Action snapshots issue and PR counts twice a week, appends them to
+`data/history.json`, also records the size of the `flang/` source tree to
+`data/loc.json`, and deploys a static site that graphs each metric over time.
+No server, no database — the committed JSON *is* the database.
 
 ![open issues over time](docs/preview.png)
 
@@ -22,6 +23,12 @@ For every configured label, per snapshot:
 The site graphs any of these as a multi-line time series, one line per label,
 with a metric switcher and a toggleable legend.
 
+Plus, repository-wide (not per-label):
+
+- total lines of code in the `flang/` subtree, with a per-language breakdown
+
+shown in a dedicated "Source size" panel.
+
 ## How the history works
 
 GitHub does not store historical counts — the search API only answers
@@ -33,10 +40,28 @@ GitHub does not store historical counts — the search API only answers
    exact figure, not an estimate. This populates the graph immediately,
    `BACKFILL_MONTHS` deep (default 18).
 
-2. **Daily snapshots (every run).** Each run records that day's exact counts
-   for all four metrics and appends them. Over time the forward history
-   becomes a precise daily record. Reconstructed points are flagged
-   `"reconstructed": true` so the two are distinguishable.
+2. **Snapshots (every run).** Each run records that day's exact counts for
+   all four metrics and appends them. Over time the forward history becomes a
+   precise record. Reconstructed points are flagged `"reconstructed": true`
+   so the two are distinguishable.
+
+Lines of code has no backfill — it starts as a single point and builds
+forward, one snapshot per run (see *Lines of code* below).
+
+## Lines of code
+
+`scripts/loc.py` measures the `flang/` subtree of llvm/llvm-project. Cloning
+all of llvm-project is expensive, so it does the cheap thing: a **blobless,
+depth-1, sparse checkout** of just `flang/` (`git clone --filter=blob:none
+--depth=1 --no-checkout` then `git sparse-checkout set flang`), which fetches
+only that subtree at HEAD — tens of MB, not the multi-GB full repo — and runs
+[`cloc`](https://github.com/AlDanial/cloc) over it. It appends one dated point
+to `data/loc.json` per run, recording total code/comment/blank lines, file
+count, the HEAD sha, and a per-language code-line breakdown.
+
+This is whole-subtree size over time, not a per-label figure — GitHub exposes
+line deltas per *repository*, not per *label*, so there is no accurate
+per-label LOC to graph.
 
 ## Setup
 
@@ -52,8 +77,8 @@ GitHub does not store historical counts — the search API only answers
    roughly `labels × (BACKFILL_MONTHS + 1) × 2` search calls, paced to stay
    under the rate limit). Subsequent runs add one point each and finish fast.
 
-After that it runs on its own at 06:17 UTC every other day. Your dashboard
-lives at `https://<you>.github.io/<repo>/`.
+After that it runs on its own at 06:17 UTC every Monday and Thursday. Your
+dashboard lives at `https://<you>.github.io/<repo>/`.
 
 ## Configuring labels
 
@@ -76,36 +101,32 @@ failing the run.
 ## Running locally
 
 ```bash
-# collect (needs a token to avoid the ~10 req/min unauthenticated limit)
+# collect issue/PR counts (needs a token to avoid the ~10 req/min limit)
 GITHUB_TOKEN=ghp_xxx python scripts/collect.py
 
-# serve — note the site reads ../data/history.json in this layout
+# collect lines of code (needs git and cloc on PATH)
+python scripts/loc.py
+
+# serve — the site tries data/ then ../data/, so this layout works
 python -m http.server 8000
 # open http://localhost:8000/site/index.html
 ```
 
 ## Adjusting cadence
 
-Edit the `cron` in `.github/workflows/collect.yml`. `17 6 */2 * *` is every
-other day; `17 6 * * *` is daily. GitHub may delay scheduled runs under load,
-which is harmless here — a missed day just means one fewer point.
-
-## What it does not track
-
-Lines added/removed per label is intentionally omitted. GitHub exposes line
-deltas per *repository*, not per *label*, so there is no accurate per-label
-figure to graph. If you want true per-subdirectory line counts, the honest
-source is `git log --numstat -- flang/` against a local clone, which is a
-different kind of job than this label-counting collector. It could be added
-as a second workflow that clones, runs `git log`, and writes a separate
-series — open an issue on your copy if you want to go there.
+Edit the `cron` in `.github/workflows/collect.yml`. `17 6 * * 1,4` is Monday
+and Thursday; `17 6 * * *` is daily; `17 6 */2 * *` is every other day.
+GitHub may delay scheduled runs under load, which is harmless here — a missed
+run just means one fewer point.
 
 ## Files
 
 ```
-scripts/collect.py            the collector
+scripts/collect.py            issue/PR collector (GitHub Search API)
+scripts/loc.py                lines-of-code collector (sparse checkout + cloc)
 data/labels.json              tracked labels (edit this)
-data/history.json             accumulated time series (machine-written)
+data/history.json             accumulated issue/PR series (machine-written)
+data/loc.json                 accumulated lines-of-code series (machine-written)
 site/index.html               the dashboard (static, no build step)
 .github/workflows/collect.yml schedule + commit + Pages deploy
 ```

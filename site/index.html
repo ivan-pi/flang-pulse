@@ -123,6 +123,22 @@
     </p>
   </section>
 
+  <section class="panel" id="loc-panel" hidden>
+    <div class="panel-head">
+      <h2>Source size · <span style="font-family:var(--mono);color:var(--sig)">flang/</span></h2>
+      <div class="meta" id="loc-now">—</div>
+    </div>
+    <div class="chart-wrap">
+      <svg class="chart" id="loc-chart" viewBox="0 0 720 280" role="img" aria-label="Lines of code over time"></svg>
+    </div>
+    <div class="legend" id="loc-langs"></div>
+    <p class="caveat">
+      Total lines of code in the <em>flang/</em> subtree of llvm/llvm-project,
+      counted with <em>cloc</em> from a sparse checkout each run. Points are exact
+      snapshots; the series builds forward from the first collection.
+    </p>
+  </section>
+
   <footer id="footer">
     Data collected daily via GitHub Actions · counts from the GitHub REST API.
     Not affiliated with the LLVM project.
@@ -140,6 +156,21 @@ const hidden = new Set();
 
 const fmt = (n) => n == null ? "––" : n.toLocaleString("en-US");
 
+// The site is served two ways: locally as /site/index.html (data is at
+// ../data/) and on Pages with index.html at the root (data is at data/).
+// Try both so neither layout needs a build step.
+async function fetchJSON(candidates){
+  let lastErr;
+  for(const path of candidates){
+    try{
+      const res = await fetch(path + "?_=" + Date.now());
+      if(res.ok) return await res.json();
+      lastErr = new Error(path + " " + res.status);
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error("not found");
+}
+
 function relTime(iso){
   if(!iso) return "";
   const d = Math.floor((Date.now() - new Date(iso).getTime())/1000);
@@ -150,9 +181,7 @@ function relTime(iso){
 
 async function boot(){
   try{
-    const res = await fetch("../data/history.json?_=" + Date.now());
-    if(!res.ok) throw new Error("history.json " + res.status);
-    DATA = await res.json();
+    DATA = await fetchJSON(["data/history.json", "../data/history.json"]);
   }catch(e){
     document.getElementById("status").textContent = "NO DATA";
     document.getElementById("chart-wrap").innerHTML =
@@ -325,7 +354,78 @@ document.getElementById("switch").addEventListener("click", (e)=>{
   render();
 });
 
+// ── Lines of code panel (data/loc.json) ───────────────────────────────
+const LANG_COLORS = {
+  "C++":"#5aa9f7", "C/C++ Header":"#b48cf2", "Fortran 90":"#39d98a",
+  "Fortran 77":"#4fd1c5", "Python":"#f2b441", "CMake":"#f2685a", "Other":"#7d8da3",
+};
+
+async function bootLoc(){
+  let loc;
+  try{
+    loc = await fetchJSON(["data/loc.json", "../data/loc.json"]);
+  }catch(e){ return; } // no LOC data yet — leave the panel hidden
+  const snaps = (loc.snapshots || []).filter(s => s.code != null);
+  if(!snaps.length) return;
+
+  document.getElementById("loc-panel").hidden = false;
+  const last = snaps[snaps.length-1];
+  const prev = snaps.length>=2 ? snaps[snaps.length-2] : null;
+  const delta = prev ? last.code - prev.code : null;
+  const deltaTxt = delta==null ? "" :
+    `<span style="color:${delta>=0?'var(--sig)':'#f2685a'}"> ${delta>=0?'+':''}${fmt(delta)} since last</span>`;
+  document.getElementById("loc-now").innerHTML =
+    `<div style="font-size:22px;color:var(--ink)">${fmt(last.code)} <span style="color:var(--dim);font-size:13px">lines</span></div>` +
+    `<div>${fmt(last.files)} files${deltaTxt}</div>`;
+
+  renderLocChart(snaps);
+  renderLocLangs(last.by_language || {});
+}
+
+function renderLocChart(snaps){
+  const svg=document.getElementById("loc-chart");
+  const W=720,H=280,padL=58,padR=16,padT=16,padB=34;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const vals=snaps.map(s=>s.code);
+  const minV=Math.min(...vals), maxV=Math.max(...vals);
+  const lo=Math.max(0, minV-Math.ceil((maxV-minV)*0.15)-1);
+  const hi=maxV+Math.ceil((maxV-minV)*0.15)+1;
+  const span=hi-lo||1;
+  const xOf=i=> padL + (snaps.length<2?0:(i/(snaps.length-1))*iw);
+  const yOf=v=> padT + ih - ((v-lo)/span)*ih;
+
+  let g="";
+  const ticks=4;
+  for(let i=0;i<=ticks;i++){
+    const v=Math.round(lo+(span*i)/ticks);
+    const y=padT+ih-(i/ticks)*ih;
+    g+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" class="gl"/>`;
+    g+=`<text x="${padL-8}" y="${(y+3).toFixed(1)}" class="axt" text-anchor="end">${fmt(v)}</text>`;
+  }
+  const xstep=Math.ceil(snaps.length/7);
+  snaps.forEach((s,i)=>{
+    if(i%xstep!==0 && i!==snaps.length-1) return;
+    g+=`<text x="${xOf(i).toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${s.date.slice(2,7)}</text>`;
+  });
+  const path=snaps.map((s,i)=>`${i?'L':'M'}${xOf(i).toFixed(1)} ${yOf(s.code).toFixed(1)}`).join(" ");
+  g+=`<path d="${path}" class="series-line" stroke="var(--sig)"/>`;
+  snaps.forEach((s,i)=>{
+    g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(s.code).toFixed(1)}" r="2.6" fill="var(--sig)"><title>${s.date}: ${fmt(s.code)} lines</title></circle>`;
+  });
+  svg.innerHTML=g;
+}
+
+function renderLocLangs(byLang){
+  const wrap=document.getElementById("loc-langs");
+  const entries=Object.entries(byLang).sort((a,b)=>b[1]-a[1]);
+  wrap.innerHTML = entries.map(([lang,code])=>{
+    const c=LANG_COLORS[lang]||"#7d8da3";
+    return `<button style="cursor:default"><span class="sw" style="background:${c}"></span>${lang}<span class="lv">${fmt(code)}</span></button>`;
+  }).join("");
+}
+
 boot();
+bootLoc();
 </script>
 </body>
 </html>
