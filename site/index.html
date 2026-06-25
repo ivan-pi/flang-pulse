@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>flang/pulse — LLVM Fortran development telemetry</title>
+<style>
+  :root{
+    --bg:#0c1016; --panel:#121822; --line:#1f2a38; --ink:#e6edf3;
+    --dim:#7d8da3; --faint:#4b5a6e; --sig:#39d98a;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:"Inter",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans);
+    padding:32px clamp(16px,4vw,48px);
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),
+      linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:48px 48px; background-position:center;
+  }
+  header{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;
+    align-items:flex-start;border-bottom:1px solid var(--line);
+    padding-bottom:22px;margin-bottom:22px;}
+  .live{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);
+    font-size:11px;letter-spacing:.18em;color:var(--sig);margin-bottom:10px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--sig);}
+  h1{font-family:var(--mono);font-size:clamp(28px,5vw,44px);font-weight:700;
+    margin:0;letter-spacing:-.02em;line-height:1;}
+  .slash{color:var(--sig);}
+  .sub{color:var(--dim);margin:11px 0 0;max-width:56ch;font-size:14px;line-height:1.5;}
+  .meta{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:right;
+    display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:22px;margin-bottom:22px;}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:12px;margin-bottom:18px;}
+  .panel-head h2{font-size:16px;margin:0;font-weight:600;}
+  .metric-switch{display:flex;gap:4px;background:var(--bg);border:1px solid var(--line);
+    border-radius:9px;padding:3px;}
+  .metric-switch button{background:transparent;border:none;color:var(--dim);
+    font-family:var(--mono);font-size:12px;padding:7px 13px;border-radius:6px;
+    cursor:pointer;transition:.12s;}
+  .metric-switch button.on{background:var(--panel);color:var(--ink);}
+  .metric-switch button:hover:not(.on){color:var(--ink);}
+  .chart-wrap{position:relative;width:100%;}
+  svg.chart{width:100%;height:auto;display:block;overflow:visible;}
+  .gl{stroke:var(--line);stroke-width:1;}
+  .axt{fill:var(--faint);font-family:var(--mono);font-size:10px;}
+  .series-line{fill:none;stroke-width:2;vector-effect:non-scaling-stroke;
+    transition:opacity .15s;}
+  .series-dot{transition:opacity .15s;}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;}
+  .legend button{display:flex;align-items:center;gap:7px;background:var(--bg);
+    border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;
+    font-family:var(--mono);font-size:12px;color:var(--ink);transition:.12s;}
+  .legend button.off{opacity:.35;}
+  .legend button:hover{border-color:var(--dim);}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+  .legend .lv{color:var(--faint);margin-left:2px;}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:12px;margin-bottom:22px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:11px;
+    padding:16px 16px 13px;position:relative;overflow:hidden;cursor:pointer;}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;}
+  .card .code{font-family:var(--mono);font-size:11px;color:var(--faint);
+    letter-spacing:.1em;}
+  .card .val{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1;
+    margin-top:12px;}
+  .card .lbl{color:var(--dim);font-size:12px;margin-top:8px;}
+  .card .dl{font-family:var(--mono);font-size:11px;margin-top:6px;color:var(--dim);}
+  .card .dl.up{color:#f2b441;} .card .dl.down{color:var(--sig);}
+  .tip{position:absolute;pointer-events:none;background:#0a0e14;border:1px solid var(--line);
+    border-radius:8px;padding:9px 11px;font-family:var(--mono);font-size:11px;
+    color:var(--ink);opacity:0;transition:opacity .1s;white-space:nowrap;z-index:5;
+    box-shadow:0 6px 20px rgba(0,0,0,.4);}
+  .tip .td{color:var(--faint);margin-bottom:5px;}
+  .tip .tr{display:flex;align-items:center;gap:6px;margin:2px 0;}
+  .tip .tr .sw{width:8px;height:8px;border-radius:2px;}
+  .caveat{color:var(--dim);font-size:12.5px;line-height:1.55;margin:16px 0 0;max-width:80ch;}
+  .caveat em{color:var(--ink);font-style:normal;font-family:var(--mono);font-size:11.5px;}
+  .empty{padding:60px 20px;text-align:center;color:var(--faint);font-family:var(--mono);font-size:13px;}
+  footer{color:var(--faint);font-size:12px;text-align:center;padding-top:18px;
+    border-top:1px solid var(--line);font-family:var(--mono);line-height:1.6;}
+  footer a{color:var(--dim);}
+  @media (max-width:560px){.meta{text-align:left;align-items:flex-start;}header{flex-direction:column;}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <span class="live"><span class="dot"></span><span id="status">LOADING</span></span>
+      <h1>flang<span class="slash">/</span>pulse</h1>
+      <p class="sub">Per-label development telemetry for the LLVM Fortran stack — llvm/llvm-project. Snapshotted daily.</p>
+    </div>
+    <div class="meta">
+      <div id="updated">—</div>
+      <div id="point-count">—</div>
+    </div>
+  </header>
+
+  <div class="cards" id="cards"></div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2 id="chart-title">Open issues over time</h2>
+      <div class="metric-switch" id="switch">
+        <button data-metric="open_issues" class="on">open issues</button>
+        <button data-metric="open_prs">open PRs</button>
+        <button data-metric="merged_prs">merged PRs</button>
+      </div>
+    </div>
+    <div class="chart-wrap" id="chart-wrap">
+      <svg class="chart" id="chart" viewBox="0 0 720 320" role="img" aria-label="Time series of label activity"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="legend" id="legend"></div>
+    <p class="caveat">
+      Points before today are reconstructed from issue timestamps — open count at month <em>m</em> =
+      issues created before <em>m</em> minus issues closed before <em>m</em>. Points from the daily
+      collector are exact live snapshots. Toggle labels in the legend; hover the chart for values.
+    </p>
+  </section>
+
+  <footer id="footer">
+    Data collected daily via GitHub Actions · counts from the GitHub REST API.
+    Not affiliated with the LLVM project.
+  </footer>
+
+<script>
+const METRICS = {
+  open_issues: "Open issues over time",
+  open_prs: "Open pull requests over time",
+  merged_prs: "Merged pull requests over time",
+};
+let DATA = null;
+let metric = "open_issues";
+const hidden = new Set();
+
+const fmt = (n) => n == null ? "––" : n.toLocaleString("en-US");
+
+function relTime(iso){
+  if(!iso) return "";
+  const d = Math.floor((Date.now() - new Date(iso).getTime())/1000);
+  if(d<3600) return Math.floor(d/60)+"m ago";
+  if(d<86400) return Math.floor(d/3600)+"h ago";
+  return Math.floor(d/86400)+"d ago";
+}
+
+async function boot(){
+  try{
+    const res = await fetch("../data/history.json?_=" + Date.now());
+    if(!res.ok) throw new Error("history.json " + res.status);
+    DATA = await res.json();
+  }catch(e){
+    document.getElementById("status").textContent = "NO DATA";
+    document.getElementById("chart-wrap").innerHTML =
+      '<div class="empty">No history yet. The collector writes data/history.json on its first run.<br>Trigger the workflow in the Actions tab, or wait for the scheduled run.</div>';
+    return;
+  }
+  document.getElementById("status").textContent = "LIVE";
+  document.getElementById("updated").textContent = "updated · " + relTime(DATA.updated_at);
+  const total = Object.values(DATA.series).reduce((a,s)=>a+s.snapshots.length,0);
+  document.getElementById("point-count").textContent = total + " data points";
+  render();
+}
+
+function labelMeta(id){
+  return DATA.labels[id] || { id, name:id, accent:"#888" };
+}
+function seriesFor(id, m){
+  const snaps = DATA.series[id].snapshots
+    .filter(s => s[m] != null)
+    .map(s => ({ date:s.date, v:s[m] }));
+  return snaps;
+}
+
+function render(){
+  document.getElementById("chart-title").textContent = METRICS[metric];
+  renderCards();
+  renderChart();
+  renderLegend();
+}
+
+function renderCards(){
+  const wrap = document.getElementById("cards");
+  wrap.innerHTML = "";
+  for(const id of Object.keys(DATA.series)){
+    const meta = labelMeta(id);
+    const snaps = DATA.series[id].snapshots;
+    const last = snaps[snaps.length-1] || {};
+    const prev = snaps.length>=2 ? snaps[snaps.length-2] : null;
+    const cur = last[metric];
+    const delta = prev && prev[metric]!=null && cur!=null ? cur - prev[metric] : null;
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.cssText = `--a:${meta.accent}`;
+    card.innerHTML = `
+      <div class="code">${meta.name}</div>
+      <div class="val" style="color:${meta.accent}">${fmt(cur)}</div>
+      <div class="lbl">${meta.desc||""}</div>
+      ${delta!=null ? `<div class="dl ${delta>0?'up':delta<0?'down':''}">${delta>0?'▲':delta<0?'▼':'—'} ${fmt(Math.abs(delta))} since last</div>`:''}`;
+    card.addEventListener("click", ()=>{
+      if(hidden.has(id)){ hidden.delete(id);} else if(hidden.size < Object.keys(DATA.series).length-1){ hidden.add(id);} 
+      render();
+    });
+    // colour the left accent bar
+    card.insertAdjacentHTML("afterbegin", `<span style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${meta.accent}"></span>`);
+    wrap.appendChild(card);
+  }
+}
+
+function renderChart(){
+  const svg = document.getElementById("chart");
+  const W=720, H=320, padL=46, padR=16, padT=16, padB=34;
+  const iw=W-padL-padR, ih=H-padT-padB;
+
+  const ids = Object.keys(DATA.series).filter(id=>!hidden.has(id));
+  const all = [];
+  const dateSet = new Set();
+  for(const id of ids){
+    for(const p of seriesFor(id, metric)){ all.push(p.v); dateSet.add(p.date); }
+  }
+  if(!all.length){ svg.innerHTML = `<text x="${W/2}" y="${H/2}" class="axt" text-anchor="middle">no data for this metric</text>`; return; }
+
+  const dates = [...dateSet].sort();
+  const minV=Math.min(...all), maxV=Math.max(...all);
+  const lo=Math.max(0, minV - Math.ceil((maxV-minV)*0.1) - 1);
+  const hi=maxV + Math.ceil((maxV-minV)*0.1) + 1;
+  const span=hi-lo||1;
+
+  const xOf=(date)=> padL + (dates.length<2?0:(dates.indexOf(date)/(dates.length-1))*iw);
+  const yOf=(v)=> padT + ih - ((v-lo)/span)*ih;
+
+  let g="";
+  const ticks=4;
+  for(let i=0;i<=ticks;i++){
+    const v=Math.round(lo + (span*i)/ticks);
+    const y=padT+ih-(i/ticks)*ih;
+    g+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" class="gl"/>`;
+    g+=`<text x="${padL-8}" y="${(y+3).toFixed(1)}" class="axt" text-anchor="end">${v}</text>`;
+  }
+  const xstep=Math.ceil(dates.length/7);
+  dates.forEach((d,i)=>{
+    if(i%xstep!==0 && i!==dates.length-1) return;
+    const x=xOf(d);
+    g+=`<text x="${x.toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${d.slice(2,7)}</text>`;
+  });
+
+  for(const id of ids){
+    const meta=labelMeta(id);
+    const s=seriesFor(id, metric);
+    if(s.length<1) continue;
+    const path=s.map((p,i)=>`${i?'L':'M'}${xOf(p.date).toFixed(1)} ${yOf(p.v).toFixed(1)}`).join(" ");
+    g+=`<path d="${path}" class="series-line" stroke="${meta.accent}"/>`;
+    for(const p of s){
+      g+=`<circle cx="${xOf(p.date).toFixed(1)}" cy="${yOf(p.v).toFixed(1)}" r="2.4" class="series-dot" fill="${meta.accent}"/>`;
+    }
+  }
+
+  // invisible hover columns
+  g+=`<g id="hovers">`;
+  dates.forEach((d,i)=>{
+    const x=xOf(d);
+    const w=iw/Math.max(1,dates.length-1);
+    g+=`<rect x="${(x-w/2).toFixed(1)}" y="${padT}" width="${w.toFixed(1)}" height="${ih}" fill="transparent" data-date="${d}"/>`;
+  });
+  g+=`</g>`;
+
+  svg.innerHTML=g;
+  wireHover(svg, dates, ids, xOf, yOf, padT, ih);
+}
+
+function wireHover(svg, dates, ids, xOf, yOf, padT, ih){
+  const tip=document.getElementById("tip");
+  const wrap=document.getElementById("chart-wrap");
+  svg.querySelectorAll("#hovers rect").forEach(r=>{
+    r.addEventListener("mouseenter", ()=>{
+      const d=r.getAttribute("data-date");
+      let rows="";
+      for(const id of ids){
+        const meta=labelMeta(id);
+        const pt=seriesFor(id, metric).find(p=>p.date===d);
+        if(!pt) continue;
+        rows+=`<div class="tr"><span class="sw" style="background:${meta.accent}"></span>${meta.name} <b style="margin-left:auto;padding-left:12px">${fmt(pt.v)}</b></div>`;
+      }
+      tip.innerHTML=`<div class="td">${d}</div>${rows}`;
+      const rect=svg.getBoundingClientRect();
+      const scaleX=rect.width/720;
+      const px=xOf(d)*scaleX;
+      tip.style.opacity="1";
+      const tw=tip.offsetWidth;
+      let left=px+14; if(left+tw>rect.width) left=px-tw-14;
+      tip.style.left=Math.max(4,left)+"px";
+      tip.style.top="20px";
+    });
+    r.addEventListener("mouseleave", ()=>{ tip.style.opacity="0"; });
+  });
+}
+
+function renderLegend(){
+  const leg=document.getElementById("legend");
+  leg.innerHTML="";
+  for(const id of Object.keys(DATA.series)){
+    const meta=labelMeta(id);
+    const snaps=DATA.series[id].snapshots;
+    const last=snaps[snaps.length-1]||{};
+    const b=document.createElement("button");
+    b.className = hidden.has(id) ? "off" : "";
+    b.innerHTML=`<span class="sw" style="background:${meta.accent}"></span>${meta.name}<span class="lv">${fmt(last[metric])}</span>`;
+    b.addEventListener("click", ()=>{
+      if(hidden.has(id)) hidden.delete(id);
+      else if(hidden.size < Object.keys(DATA.series).length-1) hidden.add(id);
+      render();
+    });
+    leg.appendChild(b);
+  }
+}
+
+document.getElementById("switch").addEventListener("click", (e)=>{
+  const btn=e.target.closest("button"); if(!btn) return;
+  metric=btn.dataset.metric;
+  document.querySelectorAll("#switch button").forEach(x=>x.classList.toggle("on", x===btn));
+  render();
+});
+
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "labels": [
+    { "id": "flang", "name": "flang", "desc": "umbrella", "accent": "#39d98a" },
+    { "id": "flang:frontend", "name": "flang:frontend", "desc": "parser / semantics", "accent": "#5aa9f7" },
+    { "id": "flang:ir", "name": "flang:ir", "desc": "FIR / HLFIR", "accent": "#b48cf2" },
+    { "id": "flang:openmp", "name": "flang:openmp", "desc": "OpenMP", "accent": "#f2b441" },
+    { "id": "flang:driver", "name": "flang:driver", "desc": "compiler driver", "accent": "#4fd1c5" },
+    { "id": "flang:runtime", "name": "flang:runtime", "desc": "runtime library", "accent": "#f2685a" },
+    { "id": "flang:codegen", "name": "flang:codegen", "desc": "code generation", "accent": "#f78c6b" },
+    { "id": "openmp", "name": "openmp", "desc": "project-wide OpenMP", "accent": "#e879b9" },
+    { "id": "openacc", "name": "openacc", "desc": "OpenACC", "accent": "#9ab84a" },
+    { "id": "offload", "name": "offload", "desc": "GPU offload", "accent": "#6ab0f3" }
+  ]
+}
