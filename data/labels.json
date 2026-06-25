@@ -7,7 +7,10 @@
     { "id": "flang:driver", "name": "flang:driver", "desc": "compiler driver", "accent": "#4fd1c5" },
     { "id": "flang:runtime", "name": "flang:runtime", "desc": "runtime library", "accent": "#f2685a" },
     { "id": "flang:codegen", "name": "flang:codegen", "desc": "code generation", "accent": "#f78c6b" },
+    { "id": "flang:cuf", "name": "flang:cuf", "desc": "CUDA Fortran", "accent": "#ff8c42" },
+    { "id": "flang:parser", "name": "flang:parser", "desc": "parser", "accent": "#7bdff2" },
     { "id": "openmp", "name": "openmp", "desc": "project-wide OpenMP", "accent": "#e879b9" },
+    { "id": "openmp:libomptarget", "name": "openmp:libomptarget", "desc": "OpenMP target offloading", "accent": "#c792ea" },
     { "id": "openacc", "name": "openacc", "desc": "OpenACC", "accent": "#9ab84a" },
     { "id": "offload", "name": "offload", "desc": "GPU offload", "accent": "#6ab0f3" }
   ]

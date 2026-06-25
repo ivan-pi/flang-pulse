@@ -31,6 +31,8 @@
   .sub{color:var(--dim);margin:11px 0 0;max-width:56ch;font-size:14px;line-height:1.5;}
   .meta{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:right;
     display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+  .repo-link{color:var(--dim);text-decoration:none;}
+  .repo-link:hover{color:var(--ink);text-decoration:underline;}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;
     padding:22px;margin-bottom:22px;}
   .panel-head{display:flex;justify-content:space-between;align-items:center;
@@ -100,13 +102,15 @@
     <div>
       <span class="live"><span class="dot"></span><span id="status">LOADING</span></span>
       <h1>flang<span class="slash">/</span>pulse</h1>
-      <p class="sub">Per-label development telemetry for the LLVM Fortran stack — llvm/llvm-project. Snapshotted daily.</p>
+      <p class="sub">Per-label development telemetry for the LLVM Fortran stack — llvm/llvm-project. Updated weekly.</p>
     </div>
     <div class="meta">
       <div id="updated">—</div>
       <div id="point-count">—</div>
+      <a class="repo-link" href="https://github.com/ivan-pi/flang-pulse" target="_blank" rel="noopener noreferrer">github.com/ivan-pi/flang-pulse</a>
     </div>
   </header>
+  <p class="caveat">This website is generated with Claude and Copilot.</p>
 
   <div class="cards" id="cards"></div>
 
@@ -126,7 +130,7 @@
     <div class="legend" id="legend"></div>
     <p class="caveat">
       Points before today are reconstructed from issue timestamps — open count at month <em>m</em> =
-      issues created before <em>m</em> minus issues closed before <em>m</em>. Points from the daily
+      issues created before <em>m</em> minus issues closed before <em>m</em>. Points from the weekly
       collector are exact live snapshots. Toggle labels in the legend; hover the chart for values.
     </p>
   </section>
@@ -150,7 +154,7 @@
       Volume of change flowing into <em>flang/</em> + <em>flang-rt/</em>, from
       <em>git log --numstat</em>. Rising commits / lines / contributors mean
       development is accelerating; falling means it is cooling off. Dashed
-      verticals mark LLVM <em>X.Y.0</em> releases.
+      verticals mark LLVM <em>X.Y.0</em> releases. Contributors are unique author emails per month.
     </p>
   </section>
 
@@ -164,14 +168,14 @@
     </div>
     <div class="legend" id="loc-langs"></div>
     <p class="caveat">
-      Total lines of code in the <em>flang/</em> subtree of llvm/llvm-project,
+      Total lines of code in <em>flang/</em> + <em>flang-rt/</em> of llvm/llvm-project,
       counted with <em>cloc</em> from a sparse checkout each run. Points are exact
-      snapshots; the series builds forward from the first collection.
+      snapshots; the series builds forward from the first collection. Historical backfill is intended as a one-time offline run, not CI.
     </p>
   </section>
 
   <footer id="footer">
-    Data collected daily via GitHub Actions · counts from the GitHub REST API.
+    Data collected weekly via GitHub Actions · counts from the GitHub REST API.
     Not affiliated with the LLVM project.
   </footer>
 
@@ -240,6 +244,14 @@ function seriesFor(id, m){
   return snaps;
 }
 
+function dateTickLabel(date, prevDate, nextDate){
+  const ym = date.slice(0, 7);
+  const prevYm = prevDate ? prevDate.slice(0, 7) : "";
+  const nextYm = nextDate ? nextDate.slice(0, 7) : "";
+  if(ym === prevYm || ym === nextYm) return date.slice(2);
+  return date.slice(2, 7);
+}
+
 function render(){
   document.getElementById("chart-title").textContent = METRICS[metric];
   renderCards();
@@ -264,7 +276,7 @@ function renderCards(){
       <div class="code">${meta.name}</div>
       <div class="val" style="color:${meta.accent}">${fmt(cur)}</div>
       <div class="lbl">${meta.desc||""}</div>
-      ${delta!=null ? `<div class="dl ${delta>0?'up':delta<0?'down':''}">${delta>0?'▲':delta<0?'▼':'—'} ${fmt(Math.abs(delta))} since last</div>`:''}`;
+      ${delta!=null ? `<div class="dl ${delta>0?'up':delta<0?'down':''}">${delta>0?'▲':delta<0?'▼':'—'} ${fmt(Math.abs(delta))} vs previous snapshot</div>`:''}`;
     card.addEventListener("click", ()=>{
       if(hidden.has(id)){ hidden.delete(id);} else if(hidden.size < Object.keys(DATA.series).length-1){ hidden.add(id);} 
       render();
@@ -309,7 +321,7 @@ function renderChart(){
   dates.forEach((d,i)=>{
     if(i%xstep!==0 && i!==dates.length-1) return;
     const x=xOf(d);
-    g+=`<text x="${x.toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${d.slice(2,7)}</text>`;
+    g+=`<text x="${x.toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${dateTickLabel(d, dates[i-1], dates[i+1])}</text>`;
   });
 
   g+=releaseMarkers(dates.map(d=>+new Date(d)), dates.map(d=>xOf(d)), padT, ih);
@@ -411,7 +423,7 @@ async function bootLoc(){
   const prev = snaps.length>=2 ? snaps[snaps.length-2] : null;
   const delta = prev ? last.code - prev.code : null;
   const deltaTxt = delta==null ? "" :
-    `<span style="color:${delta>=0?'var(--sig)':'#f2685a'}"> ${delta>=0?'+':''}${fmt(delta)} since last</span>`;
+    `<span style="color:${delta>=0?'var(--sig)':'#f2685a'}"> ${delta>=0?'+':''}${fmt(delta)} vs previous snapshot</span>`;
   document.getElementById("loc-now").innerHTML =
     `<div style="font-size:22px;color:var(--ink)">${fmt(last.code)} <span style="color:var(--dim);font-size:13px">lines</span></div>` +
     `<div>${fmt(last.files)} files${deltaTxt}</div>`;
@@ -443,7 +455,7 @@ function renderLocChart(snaps){
   const xstep=Math.ceil(snaps.length/7);
   snaps.forEach((s,i)=>{
     if(i%xstep!==0 && i!==snaps.length-1) return;
-    g+=`<text x="${xOf(i).toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${s.date.slice(2,7)}</text>`;
+    g+=`<text x="${xOf(i).toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${dateTickLabel(s.date, snaps[i-1]?.date, snaps[i+1]?.date)}</text>`;
   });
   g+=releaseMarkers(snaps.map(s=>+new Date(s.date)), snaps.map((s,i)=>xOf(i)), padT, ih);
   const path=snaps.map((s,i)=>`${i?'L':'M'}${xOf(i).toFixed(1)} ${yOf(s.code).toFixed(1)}`).join(" ");
@@ -490,11 +502,12 @@ function releaseMarkers(axisTimes, xs, top, h){
 const ACT_METRICS = {
   churn:   {title:"Lines changed per month",
             series:[{key:"insertions",color:"#39d98a",label:"added"},
-                    {key:"deletions", color:"#f2685a",label:"removed"}]},
+                    {key:"deletions", color:"#f2685a",label:"removed"}],
+            secondary:{key:"net",color:"#5aa9f7",label:"net"}},
   commits: {title:"Commits per month",
             series:[{key:"commits",color:"#5aa9f7",label:"commits"}]},
-  authors: {title:"Active contributors per month",
-            series:[{key:"authors",color:"#f2b441",label:"contributors"}]},
+  authors: {title:"Active contributors per month (unique)",
+            series:[{key:"authors",color:"#f2b441",label:"unique contributors"}]},
 };
 
 async function bootActivity(){
@@ -538,6 +551,10 @@ function renderActivity(){
   for(const m of months) for(const s of cfg.series) maxV=Math.max(maxV, m[s.key]||0);
   const hi=maxV+Math.ceil(maxV*0.12)+1;
   const yOf=v=> padT + ih - (v/hi)*ih;
+  const sec = cfg.secondary || null;
+  const secMaxAbs = sec ? Math.max(1, ...months.map(m => Math.abs(m[sec.key] || 0))) : 1;
+  const secHi = sec ? secMaxAbs + Math.ceil(secMaxAbs * 0.12) + 1 : 0;
+  const yOfSec = v => padT + ih - ((v + secHi) / (2 * secHi)) * ih;
 
   let g="";
   const ticks=4;
@@ -546,6 +563,14 @@ function renderActivity(){
     const y=padT+ih-(i/ticks)*ih;
     g+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" class="gl"/>`;
     g+=`<text x="${padL-8}" y="${(y+3).toFixed(1)}" class="axt" text-anchor="end">${fmt(v)}</text>`;
+  }
+  if(sec){
+    for(let i=0;i<=ticks;i++){
+      const v = Math.round(-secHi + (2 * secHi * i) / ticks);
+      const y = yOfSec(v);
+      g+=`<text x="${W-padR+8}" y="${(y+3).toFixed(1)}" class="axt">${fmt(v)}</text>`;
+    }
+    g+=`<line x1="${padL}" y1="${yOfSec(0).toFixed(1)}" x2="${W-padR}" y2="${yOfSec(0).toFixed(1)}" class="gl" stroke-dasharray="3 3"/>`;
   }
   const xstep=Math.ceil(months.length/8);
   months.forEach((m,i)=>{
@@ -562,9 +587,17 @@ function renderActivity(){
       g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(m[s.key]||0).toFixed(1)}" r="2.2" fill="${s.color}"><title>${m.month}: ${fmt(m[s.key]||0)} ${s.label}</title></circle>`;
     });
   }
+  if(sec){
+    const path=months.map((m,i)=>`${i?'L':'M'}${xOf(i).toFixed(1)} ${yOfSec(m[sec.key]||0).toFixed(1)}`).join(" ");
+    g+=`<path d="${path}" class="series-line" stroke="${sec.color}" stroke-dasharray="5 3"/>`;
+    months.forEach((m,i)=>{
+      g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOfSec(m[sec.key]||0).toFixed(1)}" r="2.2" fill="${sec.color}"><title>${m.month}: ${fmt(m[sec.key]||0)} ${sec.label}</title></circle>`;
+    });
+  }
   svg.innerHTML=g;
 
-  document.getElementById("activity-legend").innerHTML = cfg.series.map(s=>
+  const legendSeries = sec ? [...cfg.series, {key:sec.key, color:sec.color, label:`${sec.label} (right axis)`}] : cfg.series;
+  document.getElementById("activity-legend").innerHTML = legendSeries.map(s=>
     `<button style="cursor:default"><span class="sw" style="background:${s.color}"></span>${s.label}</button>`
   ).join("");
 }
