@@ -19,8 +19,18 @@ clone it writes three datasets:
 
 Recomputing the whole window every run keeps the logic simple and always
 correct; with the cached clone the blobs are already local, so it costs no
-network. Set LLVM_REPO to the clone path (default ./.llvm-cache) and
-optionally ACTIVITY_MONTHS (default 36).
+network.
+
+Environment variables
+---------------------
+LLVM_REPO        path to local clone (default ./.llvm-cache)
+ACTIVITY_MONTHS  months of history to collect (default 12)
+SINCE_COMMIT     if set, collect history reachable from this commit SHA
+                 instead of using ACTIVITY_MONTHS.  Suggested starting
+                 point for a compact first run: 3623fe6 (≈ August 2025).
+
+git log is run in streaming mode (Popen) so that the output is never
+fully buffered in memory — the script processes each line as it arrives.
 """
 
 from __future__ import annotations
@@ -31,19 +41,24 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from datetime import date, datetime, timezone
 from pathlib import Path
 
 PATHS = ["flang", "flang-rt"]
 ROOT = Path(__file__).resolve().parent.parent
 REPO = Path(os.environ.get("LLVM_REPO", ROOT / ".llvm-cache"))
-WINDOW_MONTHS = int(os.environ.get("ACTIVITY_MONTHS", "36"))
+WINDOW_MONTHS = int(os.environ.get("ACTIVITY_MONTHS", "12"))
+SINCE_COMMIT = os.environ.get("SINCE_COMMIT", "").strip()
 
 ACTIVITY = ROOT / "data" / "activity.json"
 RELEASES = ROOT / "data" / "releases.json"
 LOC = ROOT / "data" / "loc.json"
 
 TRACKED_LANGS = ["C++", "C/C++ Header", "Fortran 90", "Fortran 77", "Python", "CMake"]
+
+# Print a heartbeat line every this many commits while streaming.
+HEARTBEAT_EVERY = 500
 
 
 def git(*args: str) -> str:
@@ -52,6 +67,23 @@ def git(*args: str) -> str:
         check=True, capture_output=True, text=True,
     )
     return res.stdout
+
+
+def _git_stream(*args: str) -> subprocess.Popen:
+    """Return a Popen object whose stdout can be iterated line-by-line."""
+    return subprocess.Popen(
+        ["git", "-C", str(REPO), *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+
+def _range_args() -> list[str]:
+    """Return the git-log range flags based on env configuration."""
+    if SINCE_COMMIT:
+        return [f"{SINCE_COMMIT}..HEAD"]
+    return [f"--since={WINDOW_MONTHS} months ago"]
 
 
 # ── monthly activity ──────────────────────────────────────────────────
@@ -71,26 +103,35 @@ def _top_path(path: str) -> str | None:
     return None
 
 
-def collect_activity() -> dict:
-    """Bucket per-month churn/commits/authors from `git log --numstat`."""
-    # Pathspec after `--` limits the numstat diff to those subtrees, so the
-    # insertion/deletion counts are already scoped to flang / flang-rt.
-    out = git(
-        "log", "--no-merges", f"--since={WINDOW_MONTHS} months ago",
-        "--numstat", "--no-renames",
-        "--pretty=format:@@@%H\t%aI\t%aE", "--", *PATHS,
-    )
+def collect_activity() -> list[dict]:
+    """Bucket per-month churn/commits/authors from `git log --numstat`.
 
+    Uses streaming (Popen) to avoid buffering gigabytes of numstat output
+    in memory when the history window is large.
+    """
+    t0 = time.monotonic()
     months: dict[str, dict] = {}
     cur: dict | None = None
     cur_paths: set[str] = set()
-    for line in out.splitlines():
+    commit_count = 0
+
+    proc = _git_stream(
+        "log", "--no-merges", *_range_args(),
+        "--numstat", "--no-renames",
+        "--pretty=format:@@@%H\t%aI\t%aE", "--", *PATHS,
+    )
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        line = line.rstrip("\n")
         if line.startswith("@@@"):
             _, iso, email = line[3:].split("\t")
             cur = months.setdefault(iso[:7], _fresh_month())
             cur["commits"] += 1
             cur["_authors"].add(email.lower())
             cur_paths = set()
+            commit_count += 1
+            if commit_count % HEARTBEAT_EVERY == 0:
+                print(f"  … processed {commit_count} commits", flush=True)
             continue
         if cur is None:
             continue
@@ -114,6 +155,17 @@ def collect_activity() -> dict:
             bp["commits"] += 1
             cur_paths.add(top)
 
+    proc.stdout.close()
+    rc = proc.wait()
+    if rc != 0:
+        stderr = proc.stderr.read() if proc.stderr else ""
+        print(f"  git log exited with code {rc}: {stderr.strip()}", file=sys.stderr)
+    if proc.stderr:
+        proc.stderr.close()
+
+    elapsed = time.monotonic() - t0
+    print(f"  streamed {commit_count} commits in {elapsed:.1f}s", flush=True)
+
     rows = []
     for m in sorted(months):
         d = months[m]
@@ -127,18 +179,47 @@ def collect_activity() -> dict:
 
 
 def collect_totals() -> dict:
-    """All-time scale figures over the two subtrees (commits/trees only)."""
-    out = git("log", "--no-merges", "--pretty=format:%aI\t%aE", "--", *PATHS)
-    lines = [ln for ln in out.splitlines() if ln]
-    if not lines:
+    """Scale figures over the tracked subtrees (commits/authors/date range).
+
+    Bounded by the same window as collect_activity() and streamed line by
+    line to avoid buffering large histories in memory.
+    """
+    commits = 0
+    authors: set[str] = set()
+    first_date = ""
+    last_date = ""
+
+    proc = _git_stream(
+        "log", "--no-merges", *_range_args(),
+        "--pretty=format:%aI\t%aE", "--", *PATHS,
+    )
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        line = line.rstrip("\n")
+        if not line:
+            continue
+        iso, email = line.split("\t", 1)
+        authors.add(email.lower())
+        if not last_date:
+            last_date = iso[:10]   # first line = newest commit
+        first_date = iso[:10]      # last line  = oldest commit
+        commits += 1
+
+    proc.stdout.close()
+    rc = proc.wait()
+    if rc != 0:
+        stderr = proc.stderr.read() if proc.stderr else ""
+        print(f"  git log exited with code {rc}: {stderr.strip()}", file=sys.stderr)
+    if proc.stderr:
+        proc.stderr.close()
+
+    if not commits:
         return {}
-    authors = {ln.split("\t")[1].lower() for ln in lines}
-    dates = [ln.split("\t")[0] for ln in lines]  # newest first
     return {
-        "commits": len(lines),
+        "commits": commits,
         "authors": len(authors),
-        "first_commit": dates[-1][:10],
-        "last_commit": dates[0][:10],
+        "first_commit": first_date,
+        "last_commit": last_date,
     }
 
 
@@ -225,14 +306,24 @@ def main() -> int:
     now = datetime.now(timezone.utc).isoformat()
     head = git("rev-parse", "HEAD").strip()
 
+    if SINCE_COMMIT:
+        print(f"window: {SINCE_COMMIT}..HEAD", flush=True)
+    else:
+        print(f"window: last {WINDOW_MONTHS} months", flush=True)
+
     print("collecting monthly activity", flush=True)
     months = collect_activity()
     totals = collect_totals()
-    write_json(ACTIVITY, {
+    activity_meta: dict = {
         "repo": "llvm/llvm-project", "paths": PATHS,
-        "window_months": WINDOW_MONTHS, "head_sha": head,
-        "updated_at": now, "months": months, "totals": totals,
-    })
+        "head_sha": head, "updated_at": now,
+        "months": months, "totals": totals,
+    }
+    if SINCE_COMMIT:
+        activity_meta["since_commit"] = SINCE_COMMIT
+    else:
+        activity_meta["window_months"] = WINDOW_MONTHS
+    write_json(ACTIVITY, activity_meta)
     print(f"  {len(months)} months, totals={totals}", flush=True)
 
     print("collecting releases", flush=True)
