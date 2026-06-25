@@ -248,6 +248,7 @@ function dateTickLabel(date, prevDate, nextDate){
   const ym = date.slice(0, 7);
   const prevYm = prevDate ? prevDate.slice(0, 7) : "";
   const nextYm = nextDate ? nextDate.slice(0, 7) : "";
+  // If neighboring points share the same month, use full yy-mm-dd labels to avoid duplicate yy-mm ticks.
   if(ym === prevYm || ym === nextYm) return date.slice(2);
   return date.slice(2, 7);
 }
@@ -552,8 +553,11 @@ function renderActivity(){
   const hi=maxV+Math.ceil(maxV*0.12)+1;
   const yOf=v=> padT + ih - (v/hi)*ih;
   const sec = cfg.secondary || null;
-  const secMaxAbs = sec ? Math.max(1, ...months.map(m => Math.abs(m[sec.key] || 0))) : 1;
+  const secMaxAbs = sec
+    ? months.reduce((maxAbs, m) => Math.max(maxAbs, Math.abs(m[sec.key] || 0)), 1)
+    : 1;
   const secHi = sec ? secMaxAbs + Math.ceil(secMaxAbs * 0.12) + 1 : 0;
+  // Secondary axis is symmetric around zero: [-secHi, +secHi].
   const yOfSec = v => padT + ih - ((v + secHi) / (2 * secHi)) * ih;
 
   let g="";
