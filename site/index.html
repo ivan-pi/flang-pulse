@@ -144,6 +144,7 @@
         <button data-metric="churn" class="on">lines changed</button>
         <button data-metric="commits">commits</button>
         <button data-metric="authors">contributors</button>
+        <button data-metric="onboarding">onboarding</button>
       </div>
     </div>
     <div class="chart-wrap">
@@ -155,6 +156,13 @@
       <em>git log --numstat</em>. Rising commits / lines / contributors mean
       development is accelerating; falling means it is cooling off. Dashed
       verticals mark LLVM <em>X.Y.0</em> releases. Contributors are unique author emails per month.
+      The <em>onboarding</em> view bars the number of <em>first-time</em> contributors each
+      month — people whose first-ever commit to <em>flang/</em> + <em>flang-rt/</em> lands that
+      month — with the rolling 3-month active-contributor count on the right axis, so you can
+      see whether the project keeps attracting new people and retaining an active base.
+      First-time status is judged against the project's full history, not just the window
+      shown. Contributors are identified by commit-author email, so an email change can read
+      as a new person.
     </p>
   </section>
 
@@ -511,6 +519,11 @@ const ACT_METRICS = {
             series:[{key:"commits",color:"#5aa9f7",label:"commits"}]},
   authors: {title:"Active contributors per month (unique)",
             series:[{key:"authors",color:"#f2b441",label:"unique contributors"}]},
+  onboarding: {title:"New-contributor onboarding",
+            type:"bars",
+            stackTotal:"new_authors",
+            bars:[{key:"new_authors",color:"#39d98a",label:"first-time contributors"}],
+            secondary:{key:"active_rolling",color:"#f2b441",label:"active contributors · 3-mo rolling",positive:true}},
 };
 
 async function bootActivity(){
@@ -528,10 +541,12 @@ function renderScale(){
   const loc = LATEST_LOC;
   const recent = ACT.months.slice(-12);
   const churn12 = recent.reduce((a,m)=>a+(m.churn||0),0);
+  const new12 = recent.reduce((a,m)=>a+(m.new_authors||0),0);
   const since = t.first_commit ? t.first_commit.slice(0,4) : "—";
   const cards = [
     {k:"COMMITS", v:fmt(t.commits), s:`to flang/ + flang-rt/ since ${since}`},
     {k:"CONTRIBUTORS", v:fmt(t.authors), s:"distinct authors, all-time"},
+    {k:"NEW CONTRIBUTORS · 12MO", v:fmt(new12), s:"first-ever commit in last 12 months"},
     {k:"LINES CHANGED · 12MO", v:fmt(churn12), s:"added + removed, last 12 months"},
     {k:"SIZE", v:loc?fmt(loc.code):"—", s:loc?`lines across ${fmt(loc.files)} files`:"—"},
   ];
@@ -541,6 +556,9 @@ function renderScale(){
   ).join("");
 }
 
+// Value of a series/bar segment for a month: literal key or a computed fn.
+const segVal=(seg,m)=> seg.compute ? seg.compute(m) : (m[seg.key]||0);
+
 function renderActivity(){
   const cfg = ACT_METRICS[actMetric];
   document.getElementById("activity-title").textContent = cfg.title;
@@ -548,19 +566,40 @@ function renderActivity(){
   const W=720,H=300,padL=58,padR=16,padT=18,padB=34;
   const iw=W-padL-padR, ih=H-padT-padB;
   const months=ACT.months;
+  const isBars = cfg.type === "bars";
+  const baseSeries = isBars ? cfg.bars : cfg.series;
   const xOf=i=> padL + (months.length<2?0:(i/(months.length-1))*iw);
 
+  // Primary (left) axis. For stacked bars the height is the stack total.
   let maxV=0;
-  for(const m of months) for(const s of cfg.series) maxV=Math.max(maxV, m[s.key]||0);
+  if(isBars){
+    for(const m of months) maxV=Math.max(maxV, m[cfg.stackTotal]||0);
+  }else{
+    for(const m of months) for(const s of cfg.series) maxV=Math.max(maxV, m[s.key]||0);
+  }
   const hi=maxV+Math.ceil(maxV*0.12)+1;
   const yOf=v=> padT + ih - (v/hi)*ih;
+
+  // Secondary (right) axis. A `positive` secondary runs [0, secHi]; otherwise
+  // it is symmetric around zero ([-secHi, +secHi]) for signed series like net.
   const sec = cfg.secondary || null;
-  const secMaxAbs = sec
-    ? months.reduce((maxAbs, m) => Math.max(maxAbs, Math.abs(m[sec.key] || 0)), MIN_AXIS_ABS)
+  const secPositive = !!(sec && sec.positive);
+  const secMax = sec
+    ? months.reduce((mx, m) => Math.max(mx, secPositive ? (m[sec.key]||0) : Math.abs(m[sec.key]||0)), MIN_AXIS_ABS)
     : MIN_AXIS_ABS;
-  const secHi = sec ? secMaxAbs + Math.ceil(secMaxAbs * 0.12) + 1 : 0;
-  // Secondary axis is symmetric around zero: [-secHi, +secHi].
-  const yOfSec = v => padT + ih - ((v + secHi) / (2 * secHi)) * ih;
+  const secHi = sec ? secMax + Math.ceil(secMax * 0.12) + 1 : 0;
+  const yOfSec = secPositive
+    ? v => padT + ih - (v / secHi) * ih
+    : v => padT + ih - ((v + secHi) / (2 * secHi)) * ih;
+
+  // With two axes, colour each axis's tick labels to match the series that
+  // reads off it, so it is obvious which scale the bars vs the line use. The
+  // left axis is only tinted when the primary is a single colour (e.g. churn
+  // mixes added+removed, so it stays neutral).
+  // Inline style (not a fill attribute) so it overrides the .axt class fill.
+  const primaryColor = baseSeries.length===1 ? baseSeries[0].color : null;
+  const leftFill  = (sec && primaryColor) ? ` style="fill:${primaryColor}"` : "";
+  const rightFill = sec ? ` style="fill:${sec.color}"` : "";
 
   let g="";
   const ticks=4;
@@ -568,15 +607,16 @@ function renderActivity(){
     const v=Math.round((hi*i)/ticks);
     const y=padT+ih-(i/ticks)*ih;
     g+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" class="gl"/>`;
-    g+=`<text x="${padL-8}" y="${(y+3).toFixed(1)}" class="axt" text-anchor="end">${fmt(v)}</text>`;
+    g+=`<text x="${padL-8}" y="${(y+3).toFixed(1)}" class="axt" text-anchor="end"${leftFill}>${fmt(v)}</text>`;
   }
   if(sec){
     for(let i=0;i<=ticks;i++){
-      const v = Math.round(-secHi + (2 * secHi * i) / ticks);
+      const v = secPositive ? Math.round((secHi*i)/ticks) : Math.round(-secHi + (2 * secHi * i) / ticks);
       const y = yOfSec(v);
-      g+=`<text x="${W-padR+8}" y="${(y+3).toFixed(1)}" class="axt">${fmt(v)}</text>`;
+      g+=`<text x="${W-padR+8}" y="${(y+3).toFixed(1)}" class="axt"${rightFill}>${fmt(v)}</text>`;
     }
-    g+=`<line x1="${padL}" y1="${yOfSec(0).toFixed(1)}" x2="${W-padR}" y2="${yOfSec(0).toFixed(1)}" class="gl" stroke-dasharray="3 3"/>`;
+    if(!secPositive)
+      g+=`<line x1="${padL}" y1="${yOfSec(0).toFixed(1)}" x2="${W-padR}" y2="${yOfSec(0).toFixed(1)}" class="gl" stroke-dasharray="3 3"/>`;
   }
   const xstep=Math.ceil(months.length/8);
   months.forEach((m,i)=>{
@@ -586,12 +626,26 @@ function renderActivity(){
 
   g+=releaseMarkers(months.map(m=>+new Date(m.month+"-01")), months.map((m,i)=>xOf(i)), padT, ih);
 
-  for(const s of cfg.series){
-    const path=months.map((m,i)=>`${i?'L':'M'}${xOf(i).toFixed(1)} ${yOf(m[s.key]||0).toFixed(1)}`).join(" ");
-    g+=`<path d="${path}" class="series-line" stroke="${s.color}"/>`;
+  if(isBars){
+    const slot = months.length>1 ? iw/(months.length-1) : iw;
+    const bw = Math.max(2, Math.min(26, slot*0.62));
     months.forEach((m,i)=>{
-      g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(m[s.key]||0).toFixed(1)}" r="2.2" fill="${s.color}"><title>${m.month}: ${fmt(m[s.key]||0)} ${s.label}</title></circle>`;
+      let base=yOf(0);            // stack upward from the baseline
+      for(const seg of cfg.bars){
+        const v=segVal(seg,m);
+        const h=(v/hi)*ih, top=base-h;
+        g+=`<rect x="${(xOf(i)-bw/2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0,h).toFixed(1)}" fill="${seg.color}"><title>${m.month}: ${fmt(v)} ${seg.label}</title></rect>`;
+        base=top;
+      }
     });
+  }else{
+    for(const s of cfg.series){
+      const path=months.map((m,i)=>`${i?'L':'M'}${xOf(i).toFixed(1)} ${yOf(m[s.key]||0).toFixed(1)}`).join(" ");
+      g+=`<path d="${path}" class="series-line" stroke="${s.color}"/>`;
+      months.forEach((m,i)=>{
+        g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(m[s.key]||0).toFixed(1)}" r="2.2" fill="${s.color}"><title>${m.month}: ${fmt(m[s.key]||0)} ${s.label}</title></circle>`;
+      });
+    }
   }
   if(sec){
     const path=months.map((m,i)=>`${i?'L':'M'}${xOf(i).toFixed(1)} ${yOfSec(m[sec.key]||0).toFixed(1)}`).join(" ");
@@ -602,7 +656,10 @@ function renderActivity(){
   }
   svg.innerHTML=g;
 
-  const legendSeries = sec ? [...cfg.series, {key:sec.key, color:sec.color, label:`${sec.label} (right axis)`}] : cfg.series;
+  const legendSeries = sec
+    ? [...baseSeries.map(s=>({color:s.color, label:`${s.label} (left axis)`})),
+       {color:sec.color, label:`${sec.label} (right axis)`}]
+    : baseSeries;
   document.getElementById("activity-legend").innerHTML = legendSeries.map(s=>
     `<button style="cursor:default"><span class="sw" style="background:${s.color}"></span>${s.label}</button>`
   ).join("");
