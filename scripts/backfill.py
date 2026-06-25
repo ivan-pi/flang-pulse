@@ -40,6 +40,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -147,7 +148,6 @@ def backfill_prs(months: int, token: str | None) -> int:
         collect.DATA, {"repo": collect.REPO, "labels": {}, "series": {}})
     history.setdefault("labels", {})
     history.setdefault("series", {})
-    now = datetime.now(timezone.utc).isoformat()
 
     cutoffs = collect.month_starts(months)
     for entry in labels:
@@ -186,9 +186,12 @@ def backfill_prs(months: int, token: str | None) -> int:
 
         series["snapshots"].sort(key=lambda s: s["date"])
 
-    history["updated_at"] = now
-    collect.DATA.parent.mkdir(parents=True, exist_ok=True)
-    collect.DATA.write_text(__import__("json").dumps(history, indent=2) + "\n")
+        # Persist after each label so a failure deep into a long run keeps the
+        # labels already done — re-running then resumes from where it stopped.
+        history["updated_at"] = datetime.now(timezone.utc).isoformat()
+        collect.DATA.parent.mkdir(parents=True, exist_ok=True)
+        collect.DATA.write_text(json.dumps(history, indent=2) + "\n")
+
     print(f"prs phase: wrote {collect.DATA}", flush=True)
     return 0
 
@@ -209,7 +212,8 @@ def main() -> int:
         rc |= backfill_git(args.months)
     if args.only in (None, "prs"):
         print("=== prs phase ===", flush=True)
-        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+        token = (os.environ.get("GITHUB_TOKEN")
+                 or os.environ.get("GH_TOKEN") or "").strip() or None
         if not token:
             print("prs phase: no GITHUB_TOKEN — running unauthenticated "
                   "(rate limits will bite)", flush=True)
