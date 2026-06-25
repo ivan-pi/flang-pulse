@@ -4,8 +4,8 @@
     "flang",
     "flang-rt"
   ],
-  "head_sha": "5e85dbcde1d4ca6088132de09a3a95ca99caad17",
-  "updated_at": "2026-06-25T16:57:19.754837+00:00",
+  "head_sha": "3021455fcc4d173a92ffad2ac39a11a5dcf8271a",
+  "updated_at": "2026-06-25T19:19:14.981190+00:00",
   "months": [
     {
       "commits": 108,
@@ -26,8 +26,10 @@
           "files": 35
         }
       },
+      "active_rolling": 90,
       "month": "2025-07",
       "authors": 35,
+      "new_authors": 10,
       "churn": 18560,
       "net": 4744
     },
@@ -50,8 +52,10 @@
           "files": 114
         }
       },
+      "active_rolling": 93,
       "month": "2025-08",
       "authors": 44,
+      "new_authors": 9,
       "churn": 30509,
       "net": 14475
     },
@@ -74,8 +78,10 @@
           "files": 41
         }
       },
+      "active_rolling": 88,
       "month": "2025-09",
       "authors": 48,
+      "new_authors": 12,
       "churn": 23653,
       "net": 5645
     },
@@ -98,8 +104,10 @@
           "files": 14
         }
       },
+      "active_rolling": 88,
       "month": "2025-10",
       "authors": 46,
+      "new_authors": 10,
       "churn": 23192,
       "net": 14908
     },
@@ -122,8 +130,10 @@
           "files": 75
         }
       },
+      "active_rolling": 96,
       "month": "2025-11",
       "authors": 50,
+      "new_authors": 10,
       "churn": 59651,
       "net": 9113
     },
@@ -146,8 +156,10 @@
           "files": 133
         }
       },
+      "active_rolling": 88,
       "month": "2025-12",
       "authors": 38,
+      "new_authors": 7,
       "churn": 48775,
       "net": 5925
     },
@@ -170,8 +182,10 @@
           "files": 24
         }
       },
+      "active_rolling": 94,
       "month": "2026-01",
       "authors": 54,
+      "new_authors": 12,
       "churn": 37353,
       "net": 14729
     },
@@ -194,8 +208,10 @@
           "files": 68
         }
       },
+      "active_rolling": 89,
       "month": "2026-02",
       "authors": 50,
+      "new_authors": 13,
       "churn": 23589,
       "net": 6831
     },
@@ -218,8 +234,10 @@
           "files": 60
         }
       },
+      "active_rolling": 99,
       "month": "2026-03",
       "authors": 61,
+      "new_authors": 7,
       "churn": 31229,
       "net": 13323
     },
@@ -242,8 +260,10 @@
           "files": 23
         }
       },
+      "active_rolling": 99,
       "month": "2026-04",
       "authors": 59,
+      "new_authors": 9,
       "churn": 34193,
       "net": 16731
     },
@@ -266,22 +286,24 @@
           "files": 112
         }
       },
+      "active_rolling": 103,
       "month": "2026-05",
       "authors": 54,
+      "new_authors": 9,
       "churn": 49161,
       "net": 12229
     },
     {
-      "commits": 174,
-      "insertions": 22139,
-      "deletions": 6538,
-      "files": 1025,
+      "commits": 175,
+      "insertions": 22155,
+      "deletions": 6539,
+      "files": 1029,
       "by_path": {
         "flang": {
-          "commits": 167,
-          "insertions": 21886,
-          "deletions": 6435,
-          "files": 1006
+          "commits": 168,
+          "insertions": 21902,
+          "deletions": 6436,
+          "files": 1010
         },
         "flang-rt": {
           "commits": 11,
@@ -290,14 +312,16 @@
           "files": 19
         }
       },
+      "active_rolling": 99,
       "month": "2026-06",
       "authors": 57,
-      "churn": 28677,
-      "net": 15601
+      "new_authors": 6,
+      "churn": 28694,
+      "net": 15616
     }
   ],
   "totals": {
-    "commits": 2126,
+    "commits": 2127,
     "authors": 206,
     "first_commit": "2025-07-15",
     "last_commit": "2026-06-25"

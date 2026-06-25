@@ -60,6 +60,24 @@
       "name": "offload",
       "desc": "GPU offload",
       "accent": "#6ab0f3"
+    },
+    "flang:cuf": {
+      "id": "flang:cuf",
+      "name": "flang:cuf",
+      "desc": "CUDA Fortran",
+      "accent": "#ff8c42"
+    },
+    "flang:parser": {
+      "id": "flang:parser",
+      "name": "flang:parser",
+      "desc": "parser",
+      "accent": "#7bdff2"
+    },
+    "openmp:libomptarget": {
+      "id": "openmp:libomptarget",
+      "name": "openmp:libomptarget",
+      "desc": "OpenMP target offloading",
+      "accent": "#c792ea"
     }
   },
   "series": {
@@ -162,11 +180,11 @@
         },
         {
           "open_issues": 131,
-          "closed_issues": 208,
-          "open_prs": 169,
-          "merged_prs": 5338,
+          "closed_issues": 207,
+          "open_prs": 168,
+          "merged_prs": 5339,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T16:38:06.252735+00:00"
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
         }
       ],
       "backfilled": true
@@ -270,11 +288,11 @@
         },
         {
           "open_issues": 64,
-          "closed_issues": 742,
+          "closed_issues": 743,
           "open_prs": 0,
           "merged_prs": 7,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T16:38:06.252735+00:00"
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
         }
       ],
       "backfilled": true
@@ -377,12 +395,12 @@
           "reconstructed": true
         },
         {
-          "open_issues": 65,
-          "closed_issues": 466,
+          "open_issues": 67,
+          "closed_issues": 467,
           "open_prs": 0,
           "merged_prs": 5,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T16:38:06.252735+00:00"
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
         }
       ],
       "backfilled": true
@@ -490,7 +508,7 @@
           "open_prs": 84,
           "merged_prs": 1811,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T16:38:06.252735+00:00"
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
         }
       ],
       "backfilled": true
@@ -598,7 +616,7 @@
           "open_prs": 32,
           "merged_prs": 513,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T16:38:06.252735+00:00"
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
         }
       ],
       "backfilled": true
@@ -706,7 +724,7 @@
           "open_prs": 3,
           "merged_prs": 339,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T16:38:06.252735+00:00"
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
         }
       ],
       "backfilled": true
@@ -814,7 +832,7 @@
           "open_prs": 13,
           "merged_prs": 287,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T16:38:06.252735+00:00"
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
         }
       ],
       "backfilled": true
@@ -922,7 +940,7 @@
           "open_prs": 7,
           "merged_prs": 85,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T16:38:06.252735+00:00"
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
         }
       ],
       "backfilled": true
@@ -1027,10 +1045,10 @@
         {
           "open_issues": 3,
           "closed_issues": 5,
-          "open_prs": 17,
-          "merged_prs": 602,
+          "open_prs": 16,
+          "merged_prs": 603,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T16:38:06.252735+00:00"
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
         }
       ],
       "backfilled": true
@@ -1136,13 +1154,337 @@
           "open_issues": 24,
           "closed_issues": 47,
           "open_prs": 65,
-          "merged_prs": 743,
+          "merged_prs": 744,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T16:38:06.252735+00:00"
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+        }
+      ],
+      "backfilled": true
+    },
+    "flang:cuf": {
+      "snapshots": [
+        {
+          "date": "2024-12-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-01-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-02-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-03-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-04-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-05-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-06-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-07-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-08-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-09-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-10-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-11-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-12-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-01-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-02-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-03-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-04-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-05-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-06-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "open_issues": 0,
+          "closed_issues": 3,
+          "open_prs": 0,
+          "merged_prs": 4,
+          "date": "2026-06-25",
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+        }
+      ],
+      "backfilled": true
+    },
+    "flang:parser": {
+      "snapshots": [
+        {
+          "date": "2024-12-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-01-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-02-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-03-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-04-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-05-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-06-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-07-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-08-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-09-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-10-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-11-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-12-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-01-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-02-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-03-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-04-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-05-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-06-01",
+          "open_issues": 0,
+          "reconstructed": true
+        },
+        {
+          "open_issues": 0,
+          "closed_issues": 0,
+          "open_prs": 18,
+          "merged_prs": 456,
+          "date": "2026-06-25",
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+        }
+      ],
+      "backfilled": true
+    },
+    "openmp:libomptarget": {
+      "snapshots": [
+        {
+          "date": "2024-12-01",
+          "open_issues": 10,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-01-01",
+          "open_issues": 10,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-02-01",
+          "open_issues": 13,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-03-01",
+          "open_issues": 13,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-04-01",
+          "open_issues": 13,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-05-01",
+          "open_issues": 13,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-06-01",
+          "open_issues": 13,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-07-01",
+          "open_issues": 12,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-08-01",
+          "open_issues": 13,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-09-01",
+          "open_issues": 14,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-10-01",
+          "open_issues": 16,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-11-01",
+          "open_issues": 16,
+          "reconstructed": true
+        },
+        {
+          "date": "2025-12-01",
+          "open_issues": 16,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-01-01",
+          "open_issues": 16,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-02-01",
+          "open_issues": 16,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-03-01",
+          "open_issues": 18,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-04-01",
+          "open_issues": 18,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-05-01",
+          "open_issues": 18,
+          "reconstructed": true
+        },
+        {
+          "date": "2026-06-01",
+          "open_issues": 18,
+          "reconstructed": true
+        },
+        {
+          "open_issues": 18,
+          "closed_issues": 14,
+          "open_prs": 19,
+          "merged_prs": 341,
+          "date": "2026-06-25",
+          "collected_at": "2026-06-25T19:11:41.865910+00:00"
         }
       ],
       "backfilled": true
     }
   },
-  "updated_at": "2026-06-25T16:38:06.252735+00:00"
+  "updated_at": "2026-06-25T19:11:41.865910+00:00"
 }

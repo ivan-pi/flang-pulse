@@ -7,16 +7,16 @@
   "snapshots": [
     {
       "date": "2026-06-25",
-      "head_sha": "5e85dbcde1d4ca6088132de09a3a95ca99caad17",
-      "collected_at": "2026-06-25T16:57:19.754837+00:00",
-      "files": 5014,
-      "code": 457301,
-      "comment": 194112,
-      "blank": 74010,
+      "head_sha": "3021455fcc4d173a92ffad2ac39a11a5dcf8271a",
+      "collected_at": "2026-06-25T19:19:14.981190+00:00",
+      "files": 5015,
+      "code": 457308,
+      "comment": 194118,
+      "blank": 74012,
       "by_language": {
-        "C++": 257056,
-        "Fortran 90": 107625,
-        "C/C++ Header": 56546,
+        "C++": 257058,
+        "Fortran 90": 107629,
+        "C/C++ Header": 56547,
         "CMake": 4160,
         "Python": 930,
         "Fortran 77": 808,
@@ -24,5 +24,5 @@
       }
     }
   ],
-  "updated_at": "2026-06-25T16:57:19.754837+00:00"
+  "updated_at": "2026-06-25T19:19:14.981190+00:00"
 }
