@@ -204,7 +204,7 @@ async function fetchJSON(candidates){
   let lastErr;
   for(const path of candidates){
     try{
-      const res = await fetch(path + "?_=" + Date.now());
+      const res = await fetch(path);
       if(res.ok) return await res.json();
       lastErr = new Error(path + " " + res.status);
     }catch(e){ lastErr = e; }
