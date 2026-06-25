@@ -592,19 +592,28 @@ function renderActivity(){
     ? v => padT + ih - (v / secHi) * ih
     : v => padT + ih - ((v + secHi) / (2 * secHi)) * ih;
 
+  // With two axes, colour each axis's tick labels to match the series that
+  // reads off it, so it is obvious which scale the bars vs the line use. The
+  // left axis is only tinted when the primary is a single colour (e.g. churn
+  // mixes added+removed, so it stays neutral).
+  // Inline style (not a fill attribute) so it overrides the .axt class fill.
+  const primaryColor = baseSeries.length===1 ? baseSeries[0].color : null;
+  const leftFill  = (sec && primaryColor) ? ` style="fill:${primaryColor}"` : "";
+  const rightFill = sec ? ` style="fill:${sec.color}"` : "";
+
   let g="";
   const ticks=4;
   for(let i=0;i<=ticks;i++){
     const v=Math.round((hi*i)/ticks);
     const y=padT+ih-(i/ticks)*ih;
     g+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" class="gl"/>`;
-    g+=`<text x="${padL-8}" y="${(y+3).toFixed(1)}" class="axt" text-anchor="end">${fmt(v)}</text>`;
+    g+=`<text x="${padL-8}" y="${(y+3).toFixed(1)}" class="axt" text-anchor="end"${leftFill}>${fmt(v)}</text>`;
   }
   if(sec){
     for(let i=0;i<=ticks;i++){
       const v = secPositive ? Math.round((secHi*i)/ticks) : Math.round(-secHi + (2 * secHi * i) / ticks);
       const y = yOfSec(v);
-      g+=`<text x="${W-padR+8}" y="${(y+3).toFixed(1)}" class="axt">${fmt(v)}</text>`;
+      g+=`<text x="${W-padR+8}" y="${(y+3).toFixed(1)}" class="axt"${rightFill}>${fmt(v)}</text>`;
     }
     if(!secPositive)
       g+=`<line x1="${padL}" y1="${yOfSec(0).toFixed(1)}" x2="${W-padR}" y2="${yOfSec(0).toFixed(1)}" class="gl" stroke-dasharray="3 3"/>`;
@@ -647,7 +656,10 @@ function renderActivity(){
   }
   svg.innerHTML=g;
 
-  const legendSeries = sec ? [...baseSeries, {color:sec.color, label:`${sec.label} (right axis)`}] : baseSeries;
+  const legendSeries = sec
+    ? [...baseSeries.map(s=>({color:s.color, label:`${s.label} (left axis)`})),
+       {color:sec.color, label:`${sec.label} (right axis)`}]
+    : baseSeries;
   document.getElementById("activity-legend").innerHTML = legendSeries.map(s=>
     `<button style="cursor:default"><span class="sw" style="background:${s.color}"></span>${s.label}</button>`
   ).join("");
