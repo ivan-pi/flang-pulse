@@ -19,6 +19,11 @@
       linear-gradient(90deg,var(--line) 1px,transparent 1px);
     background-size:48px 48px; background-position:center;
   }
+  /* Cap the content width so wide windows don't blow up the charts: the SVGs
+     scale with the column, and an over-wide column pushes the secondary
+     (right) axis tick labels — drawn just past the 720-unit viewBox — off the
+     edge of the window where they get clipped. Centered with auto margins. */
+  .wrap{max-width:1080px;margin:0 auto;}
   header{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;
     align-items:flex-start;border-bottom:1px solid var(--line);
     padding-bottom:22px;margin-bottom:22px;}
@@ -98,6 +103,7 @@
 </style>
 </head>
 <body>
+  <main class="wrap">
   <header>
     <div>
       <span class="live"><span class="dot"></span><span id="status">LOADING</span></span>
@@ -197,6 +203,7 @@
     Data collected weekly via GitHub Actions · counts from the GitHub REST API.
     Not affiliated with the LLVM project.
   </footer>
+  </main>
 
 <script>
 const METRICS = {
