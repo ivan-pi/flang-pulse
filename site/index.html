@@ -151,7 +151,6 @@
         <button data-metric="churn" class="on">lines changed</button>
         <button data-metric="commits">commits</button>
         <button data-metric="authors">contributors</button>
-        <button data-metric="onboarding">onboarding</button>
       </div>
     </div>
     <div class="chart-wrap">
@@ -162,14 +161,13 @@
       Volume of change flowing into <em>flang/</em> + <em>flang-rt/</em>, from
       <em>git log --numstat</em>. Rising commits / lines / contributors mean
       development is accelerating; falling means it is cooling off. Dashed
-      verticals mark LLVM <em>X.Y.0</em> releases. Contributors are unique author emails per month.
-      The <em>onboarding</em> view bars the number of <em>first-time</em> contributors each
-      month — people whose first-ever commit to <em>flang/</em> + <em>flang-rt/</em> lands that
-      month — with the rolling 3-month active-contributor count on the right axis, so you can
-      see whether the project keeps attracting new people and retaining an active base.
-      First-time status is judged against the project's full history, not just the window
-      shown. Contributors are identified by commit-author email, so an email change can read
-      as a new person.
+      verticals mark LLVM <em>X.Y.0</em> releases.
+      The <em>contributors</em> view plots <em>active contributors</em> (unique commit-author
+      emails that month) against <em>first-time</em> contributors — people whose first-ever
+      commit to <em>flang/</em> + <em>flang-rt/</em> lands that month — so you can see whether
+      the project keeps attracting new people on top of its active base. First-time status
+      is judged against the project's full history, not just the window shown. Contributors
+      are identified by commit-author email, so an email change can read as a new person.
     </p>
   </section>
 
@@ -561,13 +559,9 @@ const ACT_METRICS = {
             secondary:{key:"net",color:"#5aa9f7",label:"net"}},
   commits: {title:"Commits per month",
             series:[{key:"commits",color:"#5aa9f7",label:"commits"}]},
-  authors: {title:"Active contributors per month (unique)",
-            series:[{key:"authors",color:"#f2b441",label:"unique contributors"}]},
-  onboarding: {title:"New-contributor onboarding",
-            type:"bars",
-            stackTotal:"new_authors",
-            bars:[{key:"new_authors",color:"#39d98a",label:"first-time contributors"}],
-            secondary:{key:"active_rolling",color:"#f2b441",label:"active contributors · 3-mo rolling",positive:true}},
+  authors: {title:"Contributors per month",
+            series:[{key:"authors",color:"#f2b441",label:"active contributors"},
+                    {key:"new_authors",color:"#39d98a",label:"first-time contributors"}]},
 };
 
 async function bootActivity(){
