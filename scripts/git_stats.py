@@ -90,10 +90,46 @@ def _range_args() -> list[str]:
 def _fresh_month() -> dict:
     return {
         "commits": 0, "insertions": 0, "deletions": 0, "files": 0,
+        "new_author_commits": 0,
         "_authors": set(),
         "by_path": {p: {"commits": 0, "insertions": 0, "deletions": 0,
                         "files": 0} for p in PATHS},
     }
+
+
+# Trailing window (in months) for the "rolling active contributors" line.
+ROLLING_MONTHS = 3
+
+
+def author_first_commits() -> dict[str, str]:
+    """Map author email -> 'YYYY-MM' of their first-ever commit to the subtrees.
+
+    Walks *all* history (not the activity window) so we can tell whether a
+    contributor is genuinely new. This is a metadata-only log — no --numstat,
+    so it needs no blob content and stays cheap even on a blobless clone.
+    """
+    first: dict[str, str] = {}
+    proc = _git_stream(
+        "log", "--no-merges", "--pretty=format:%aI\t%aE", "--", *PATHS,
+    )
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        line = line.rstrip("\n")
+        if not line:
+            continue
+        iso, email = line.split("\t", 1)
+        # git log is newest-first, so the last value we record for an email
+        # is their oldest (first) commit month.
+        first[email.lower()] = iso[:7]
+
+    proc.stdout.close()
+    rc = proc.wait()
+    if rc != 0:
+        stderr = proc.stderr.read() if proc.stderr else ""
+        print(f"  git log exited with code {rc}: {stderr.strip()}", file=sys.stderr)
+    if proc.stderr:
+        proc.stderr.close()
+    return first
 
 
 def _top_path(path: str) -> str | None:
@@ -103,11 +139,13 @@ def _top_path(path: str) -> str | None:
     return None
 
 
-def collect_activity() -> list[dict]:
+def collect_activity(first_seen: dict[str, str]) -> list[dict]:
     """Bucket per-month churn/commits/authors from `git log --numstat`.
 
     Uses streaming (Popen) to avoid buffering gigabytes of numstat output
-    in memory when the history window is large.
+    in memory when the history window is large. `first_seen` maps each author
+    to the month of their first-ever commit, so we can flag commits authored
+    by first-time contributors and count fresh faces per month.
     """
     t0 = time.monotonic()
     months: dict[str, dict] = {}
@@ -125,9 +163,15 @@ def collect_activity() -> list[dict]:
         line = line.rstrip("\n")
         if line.startswith("@@@"):
             _, iso, email = line[3:].split("\t")
-            cur = months.setdefault(iso[:7], _fresh_month())
+            month = iso[:7]
+            email = email.lower()
+            cur = months.setdefault(month, _fresh_month())
             cur["commits"] += 1
-            cur["_authors"].add(email.lower())
+            cur["_authors"].add(email)
+            # A commit counts as first-time work when its author's earliest
+            # commit anywhere lands in this same month.
+            if first_seen.get(email) == month:
+                cur["new_author_commits"] += 1
             cur_paths = set()
             commit_count += 1
             if commit_count % HEARTBEAT_EVERY == 0:
@@ -166,12 +210,31 @@ def collect_activity() -> list[dict]:
     elapsed = time.monotonic() - t0
     print(f"  streamed {commit_count} commits in {elapsed:.1f}s", flush=True)
 
+    month_keys = sorted(months)
+
+    # Rolling active contributors: distinct authors over a trailing window,
+    # giving a smoother "is the community sustained?" line than the spiky
+    # per-month count.
+    for idx, mk in enumerate(month_keys):
+        window = set()
+        for j in range(max(0, idx - ROLLING_MONTHS + 1), idx + 1):
+            window |= months[month_keys[j]]["_authors"]
+        months[mk]["active_rolling"] = len(window)
+
+    # Brand-new contributors: people whose first-ever commit falls in a month
+    # that is inside our window.
+    new_per_month: dict[str, int] = {}
+    for fm in first_seen.values():
+        if fm in months:
+            new_per_month[fm] = new_per_month.get(fm, 0) + 1
+
     rows = []
-    for m in sorted(months):
+    for m in month_keys:
         d = months[m]
         authors = d.pop("_authors")
         d["month"] = m
         d["authors"] = len(authors)
+        d["new_authors"] = new_per_month.get(m, 0)
         d["churn"] = d["insertions"] + d["deletions"]
         d["net"] = d["insertions"] - d["deletions"]
         rows.append(d)
@@ -311,8 +374,12 @@ def main() -> int:
     else:
         print(f"window: last {WINDOW_MONTHS} months", flush=True)
 
+    print("indexing all-time contributors", flush=True)
+    first_seen = author_first_commits()
+    print(f"  {len(first_seen)} contributors on record", flush=True)
+
     print("collecting monthly activity", flush=True)
-    months = collect_activity()
+    months = collect_activity(first_seen)
     totals = collect_totals()
     activity_meta: dict = {
         "repo": "llvm/llvm-project", "paths": PATHS,
