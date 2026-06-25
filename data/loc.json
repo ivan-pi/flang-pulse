@@ -1,0 +1,28 @@
+{
+  "repo": "llvm/llvm-project",
+  "paths": [
+    "flang",
+    "flang-rt"
+  ],
+  "snapshots": [
+    {
+      "date": "2026-06-25",
+      "head_sha": "5e85dbcde1d4ca6088132de09a3a95ca99caad17",
+      "collected_at": "2026-06-25T16:57:19.754837+00:00",
+      "files": 5014,
+      "code": 457301,
+      "comment": 194112,
+      "blank": 74010,
+      "by_language": {
+        "C++": 257056,
+        "Fortran 90": 107625,
+        "C/C++ Header": 56546,
+        "CMake": 4160,
+        "Python": 930,
+        "Fortran 77": 808,
+        "Other": 30176
+      }
+    }
+  ],
+  "updated_at": "2026-06-25T16:57:19.754837+00:00"
+}

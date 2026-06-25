@@ -1,0 +1,251 @@
+{
+  "repo": "llvm/llvm-project",
+  "updated_at": "2026-06-25T16:57:19.754837+00:00",
+  "releases": [
+    {
+      "tag": "llvmorg-1.0.0",
+      "version": "1.0.0",
+      "date": "2003-10-24"
+    },
+    {
+      "tag": "llvmorg-1.1.0",
+      "version": "1.1.0",
+      "date": "2003-12-17"
+    },
+    {
+      "tag": "llvmorg-1.2.0",
+      "version": "1.2.0",
+      "date": "2004-03-19"
+    },
+    {
+      "tag": "llvmorg-1.3.0",
+      "version": "1.3.0",
+      "date": "2004-08-13"
+    },
+    {
+      "tag": "llvmorg-1.4.0",
+      "version": "1.4.0",
+      "date": "2004-12-09"
+    },
+    {
+      "tag": "llvmorg-1.5.0",
+      "version": "1.5.0",
+      "date": "2005-05-18"
+    },
+    {
+      "tag": "llvmorg-1.6.0",
+      "version": "1.6.0",
+      "date": "2005-11-08"
+    },
+    {
+      "tag": "llvmorg-1.9.0",
+      "version": "1.9.0",
+      "date": "2006-11-20"
+    },
+    {
+      "tag": "llvmorg-2.0.0",
+      "version": "2.0.0",
+      "date": "2007-05-23"
+    },
+    {
+      "tag": "llvmorg-2.1.0",
+      "version": "2.1.0",
+      "date": "2007-09-27"
+    },
+    {
+      "tag": "llvmorg-2.2.0",
+      "version": "2.2.0",
+      "date": "2008-02-12"
+    },
+    {
+      "tag": "llvmorg-2.3.0",
+      "version": "2.3.0",
+      "date": "2008-06-09"
+    },
+    {
+      "tag": "llvmorg-2.4.0",
+      "version": "2.4.0",
+      "date": "2008-11-10"
+    },
+    {
+      "tag": "llvmorg-2.5.0",
+      "version": "2.5.0",
+      "date": "2009-03-03"
+    },
+    {
+      "tag": "llvmorg-2.6.0",
+      "version": "2.6.0",
+      "date": "2009-10-24"
+    },
+    {
+      "tag": "llvmorg-2.7.0",
+      "version": "2.7.0",
+      "date": "2010-04-27"
+    },
+    {
+      "tag": "llvmorg-2.8.0",
+      "version": "2.8.0",
+      "date": "2010-10-06"
+    },
+    {
+      "tag": "llvmorg-2.9.0",
+      "version": "2.9.0",
+      "date": "2011-04-07"
+    },
+    {
+      "tag": "llvmorg-3.0.0",
+      "version": "3.0.0",
+      "date": "2011-11-17"
+    },
+    {
+      "tag": "llvmorg-3.1.0",
+      "version": "3.1.0",
+      "date": "2012-05-13"
+    },
+    {
+      "tag": "llvmorg-3.2.0",
+      "version": "3.2.0",
+      "date": "2012-12-20"
+    },
+    {
+      "tag": "llvmorg-3.3.0",
+      "version": "3.3.0",
+      "date": "2013-06-07"
+    },
+    {
+      "tag": "llvmorg-3.4.0",
+      "version": "3.4.0",
+      "date": "2013-12-24"
+    },
+    {
+      "tag": "llvmorg-3.5.0",
+      "version": "3.5.0",
+      "date": "2014-09-02"
+    },
+    {
+      "tag": "llvmorg-3.6.0",
+      "version": "3.6.0",
+      "date": "2015-02-25"
+    },
+    {
+      "tag": "llvmorg-3.7.0",
+      "version": "3.7.0",
+      "date": "2015-08-27"
+    },
+    {
+      "tag": "llvmorg-3.8.0",
+      "version": "3.8.0",
+      "date": "2016-03-02"
+    },
+    {
+      "tag": "llvmorg-3.9.0",
+      "version": "3.9.0",
+      "date": "2016-08-24"
+    },
+    {
+      "tag": "llvmorg-4.0.0",
+      "version": "4.0.0",
+      "date": "2017-03-07"
+    },
+    {
+      "tag": "llvmorg-5.0.0",
+      "version": "5.0.0",
+      "date": "2017-09-01"
+    },
+    {
+      "tag": "llvmorg-6.0.0",
+      "version": "6.0.0",
+      "date": "2018-03-02"
+    },
+    {
+      "tag": "llvmorg-7.0.0",
+      "version": "7.0.0",
+      "date": "2018-09-13"
+    },
+    {
+      "tag": "llvmorg-7.1.0",
+      "version": "7.1.0",
+      "date": "2019-02-08"
+    },
+    {
+      "tag": "llvmorg-8.0.0",
+      "version": "8.0.0",
+      "date": "2019-03-15"
+    },
+    {
+      "tag": "llvmorg-9.0.0",
+      "version": "9.0.0",
+      "date": "2019-09-17"
+    },
+    {
+      "tag": "llvmorg-10.0.0",
+      "version": "10.0.0",
+      "date": "2020-03-11"
+    },
+    {
+      "tag": "llvmorg-11.0.0",
+      "version": "11.0.0",
+      "date": "2020-10-06"
+    },
+    {
+      "tag": "llvmorg-11.1.0",
+      "version": "11.1.0",
+      "date": "2021-02-03"
+    },
+    {
+      "tag": "llvmorg-12.0.0",
+      "version": "12.0.0",
+      "date": "2021-04-06"
+    },
+    {
+      "tag": "llvmorg-13.0.0",
+      "version": "13.0.0",
+      "date": "2021-09-15"
+    },
+    {
+      "tag": "llvmorg-14.0.0",
+      "version": "14.0.0",
+      "date": "2022-03-14"
+    },
+    {
+      "tag": "llvmorg-15.0.0",
+      "version": "15.0.0",
+      "date": "2022-09-05"
+    },
+    {
+      "tag": "llvmorg-16.0.0",
+      "version": "16.0.0",
+      "date": "2023-03-17"
+    },
+    {
+      "tag": "llvmorg-17.0.0",
+      "version": "17.0.0",
+      "date": "2023-08-28"
+    },
+    {
+      "tag": "llvmorg-18.1.0",
+      "version": "18.1.0",
+      "date": "2024-02-27"
+    },
+    {
+      "tag": "llvmorg-19.1.0",
+      "version": "19.1.0",
+      "date": "2024-09-17"
+    },
+    {
+      "tag": "llvmorg-20.1.0",
+      "version": "20.1.0",
+      "date": "2025-03-04"
+    },
+    {
+      "tag": "llvmorg-21.1.0",
+      "version": "21.1.0",
+      "date": "2025-08-26"
+    },
+    {
+      "tag": "llvmorg-22.1.0",
+      "version": "22.1.0",
+      "date": "2026-02-24"
+    }
+  ]
+}
