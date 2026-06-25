@@ -192,6 +192,8 @@ let REL = [];          // release tags, for chart markers
 let ACT = null;        // git activity dataset
 let actMetric = "churn";
 let LATEST_LOC = null;  // newest size snapshot, shared with the scale cards
+const YEAR_MONTH_LEN = 7;
+const MIN_AXIS_ABS = 1;
 
 const fmt = (n) => n == null ? "––" : n.toLocaleString("en-US");
 
@@ -245,12 +247,12 @@ function seriesFor(id, m){
 }
 
 function dateTickLabel(date, prevDate, nextDate){
-  const ym = date.slice(0, 7);
-  const prevYm = prevDate ? prevDate.slice(0, 7) : "";
-  const nextYm = nextDate ? nextDate.slice(0, 7) : "";
+  const ym = date.slice(0, YEAR_MONTH_LEN);
+  const prevYm = prevDate ? prevDate.slice(0, YEAR_MONTH_LEN) : "";
+  const nextYm = nextDate ? nextDate.slice(0, YEAR_MONTH_LEN) : "";
   // If neighboring points share the same month, use full yy-mm-dd labels to avoid duplicate yy-mm ticks.
   if(ym === prevYm || ym === nextYm) return date.slice(2);
-  return date.slice(2, 7);
+  return date.slice(2, YEAR_MONTH_LEN);
 }
 
 function render(){
@@ -554,8 +556,8 @@ function renderActivity(){
   const yOf=v=> padT + ih - (v/hi)*ih;
   const sec = cfg.secondary || null;
   const secMaxAbs = sec
-    ? months.reduce((maxAbs, m) => Math.max(maxAbs, Math.abs(m[sec.key] || 0)), 1)
-    : 1;
+    ? months.reduce((maxAbs, m) => Math.max(maxAbs, Math.abs(m[sec.key] || 0)), MIN_AXIS_ABS)
+    : MIN_AXIS_ABS;
   const secHi = sec ? secMaxAbs + Math.ceil(secMaxAbs * 0.12) + 1 : 0;
   // Secondary axis is symmetric around zero: [-secHi, +secHi].
   const yOfSec = v => padT + ih - ((v + secHi) / (2 * secHi)) * ih;
