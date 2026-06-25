@@ -60,6 +60,20 @@ TRACKED_LANGS = ["C++", "C/C++ Header", "Fortran 90", "Fortran 77", "Python", "C
 # Print a heartbeat line every this many commits while streaming.
 HEARTBEAT_EVERY = 500
 
+# "Not yet implemented" markers. Flang guards every unimplemented Fortran
+# construct with the TODO()/TODONYI() macros (flang/include/flang/Lower/Todo.h)
+# or an inline "not yet implemented" message; the count of these across the
+# subtree is a falling proxy for feature completeness — implement a construct
+# and a marker disappears. Counted as matching *lines* (a line is counted once
+# even if it matches several patterns), over flang/ + flang-rt/ only.
+NYI_PATTERNS = [r"TODO\(", r"TODONYI\(", r"not yet implemented"]
+
+# Test-suite size: lit tests live under these subtrees. We track both the
+# number of test files and the number of RUN: directives (individual test
+# invocations) — both rise monotonically as verified behaviour is added.
+TEST_DIRS = ["flang/test", "flang-rt/test"]
+RUN_PATTERN = r"\bRUN:"
+
 
 def git(*args: str) -> str:
     res = subprocess.run(
@@ -77,6 +91,51 @@ def _git_stream(*args: str) -> subprocess.Popen:
         stderr=subprocess.PIPE,
         text=True,
     )
+
+
+# ── code metrics (NYI markers, test-suite size) ───────────────────────
+def _grep_count(ref: str, patterns: list[str], pathspecs: list[str]) -> int:
+    """Count source lines at `ref` matching any of `patterns`, over pathspecs.
+
+    Uses `git grep` against the commit tree, so it needs no working-tree
+    checkout. A line is counted once even if it matches several patterns.
+    git grep exits 1 when there are no matches — that is not an error.
+    """
+    args = ["grep", "-I", "-E"]
+    for p in patterns:
+        args += ["-e", p]
+    args += [ref, "--", *pathspecs]
+    proc = _git_stream(*args)
+    assert proc.stdout is not None
+    n = sum(1 for _ in proc.stdout)
+    proc.stdout.close()
+    rc = proc.wait()
+    if proc.stderr:
+        err = proc.stderr.read()
+        proc.stderr.close()
+        if rc > 1:  # 1 == "no matches", anything higher is a real failure
+            print(f"  git grep exited {rc}: {err.strip()}", file=sys.stderr)
+    return n
+
+
+def _test_files(ref: str) -> int:
+    """Number of files under the tracked test subtrees at `ref`."""
+    out = git("ls-tree", "-r", "--name-only", ref, "--", *TEST_DIRS)
+    return sum(1 for ln in out.splitlines() if ln.strip())
+
+
+def code_metrics(ref: str = "HEAD") -> dict:
+    """NYI markers and test-suite size at a commit, over flang/ + flang-rt/.
+
+    Reads the tree at `ref` directly (git grep / ls-tree), so it works for both
+    the live HEAD snapshot and the historical points the backfill walks. On a
+    blobless clone it fetches the few blobs it needs on demand.
+    """
+    return {
+        "nyi": _grep_count(ref, NYI_PATTERNS, PATHS),
+        "tests": _test_files(ref),
+        "test_runs": _grep_count(ref, [RUN_PATTERN], TEST_DIRS),
+    }
 
 
 def _range_args() -> list[str]:
@@ -326,18 +385,25 @@ def collect_releases() -> list[dict]:
 
 
 # ── current size (cloc) ───────────────────────────────────────────────
-def collect_loc() -> dict | None:
-    if not shutil.which("cloc"):
-        print("  cloc not found — skipping size snapshot", flush=True)
-        return None
-    # Materialise the two subtrees at HEAD (fetches current blobs only).
+def materialize(ref: str | None = None) -> None:
+    """Sparse-checkout the tracked subtrees, at `ref` if given (else HEAD).
+
+    Fetches only the blobs for those paths at that commit, so it stays cheap on
+    a blobless clone. `--force` discards any working-tree state a previous
+    historical checkout may have left behind.
+    """
     subprocess.run(["git", "-C", str(REPO), "sparse-checkout", "init", "--cone"],
                    check=True, capture_output=True, text=True)
     subprocess.run(["git", "-C", str(REPO), "sparse-checkout", "set", *PATHS],
                    check=True, capture_output=True, text=True)
-    subprocess.run(["git", "-C", str(REPO), "checkout"],
-                   check=True, capture_output=True, text=True)
+    cmd = ["git", "-C", str(REPO), "checkout", "--force"]
+    if ref:
+        cmd.append(ref)
+    subprocess.run(cmd, check=True, capture_output=True, text=True)
 
+
+def cloc_counts() -> dict | None:
+    """Run cloc over the currently checked-out subtrees and parse the result."""
     targets = [str(REPO / p) for p in PATHS if (REPO / p).exists()]
     if not targets:
         return None
@@ -364,6 +430,19 @@ def collect_loc() -> dict | None:
         "blank": int(total.get("blank", 0)),
         "by_language": by_lang,
     }
+
+
+def collect_loc(ref: str | None = None) -> dict | None:
+    """Size snapshot at `ref` (HEAD if None): cloc plus the NYI/test metrics."""
+    if not shutil.which("cloc"):
+        print("  cloc not found — skipping size snapshot", flush=True)
+        return None
+    materialize(ref)
+    counts = cloc_counts()
+    if counts is None:
+        return None
+    counts.update(code_metrics(ref or "HEAD"))
+    return counts
 
 
 # ── io ────────────────────────────────────────────────────────────────
@@ -431,7 +510,8 @@ def main() -> int:
         loc["snapshots"].sort(key=lambda s: s["date"])
         loc["updated_at"] = now
         write_json(LOC, loc)
-        print(f"  {counts['code']:,} code lines, {counts['files']:,} files",
+        print(f"  {counts['code']:,} code lines, {counts['files']:,} files, "
+              f"{counts['nyi']:,} NYI markers, {counts['tests']:,} test files",
               flush=True)
 
     return 0

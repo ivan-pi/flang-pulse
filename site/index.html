@@ -129,9 +129,10 @@
     </div>
     <div class="legend" id="legend"></div>
     <p class="caveat">
-      Points before today are reconstructed from issue timestamps — open count at month <em>m</em> =
-      issues created before <em>m</em> minus issues closed before <em>m</em>. Points from the weekly
-      collector are exact live snapshots. Toggle labels in the legend; hover the chart for values.
+      Points before today are reconstructed from item timestamps — e.g. open count at month <em>m</em> =
+      items created before <em>m</em> minus items closed before <em>m</em>; merged PRs use their
+      <em>merged:</em> date. This is exact, not interpolated, because those timestamps are permanent.
+      Points from the weekly collector are exact live snapshots. Toggle labels in the legend; hover the chart for values.
     </p>
   </section>
 
@@ -168,7 +169,12 @@
 
   <section class="panel" id="loc-panel" hidden>
     <div class="panel-head">
-      <h2>Source size · <span style="font-family:var(--mono);color:var(--sig)">flang/</span></h2>
+      <h2 id="loc-title">Source size · <span style="font-family:var(--mono);color:var(--sig)">flang/</span></h2>
+      <div class="metric-switch" id="loc-switch">
+        <button data-metric="code" class="on">lines of code</button>
+        <button data-metric="nyi">TODO / NYI</button>
+        <button data-metric="tests">test files</button>
+      </div>
       <div class="meta" id="loc-now">—</div>
     </div>
     <div class="chart-wrap">
@@ -176,9 +182,14 @@
     </div>
     <div class="legend" id="loc-langs"></div>
     <p class="caveat">
-      Total lines of code in <em>flang/</em> + <em>flang-rt/</em> of llvm/llvm-project,
-      counted with <em>cloc</em> from a sparse checkout each run. Points are exact
-      snapshots; the series builds forward from the first collection. Historical backfill is intended as a one-time offline run, not CI.
+      Measured over <em>flang/</em> + <em>flang-rt/</em> of llvm/llvm-project each run.
+      <em>lines of code</em> is <em>cloc</em> from a sparse checkout; <em>TODO / NYI</em>
+      counts <em>not-yet-implemented</em> markers (<em>TODO(…)</em>, <em>TODONYI(…)</em>,
+      "not yet implemented") — a <em>falling</em> line means unimplemented Fortran
+      constructs are being filled in; <em>test files</em> is the size of the lit
+      test-suite, which rises as verified behaviour is added. Points before the first
+      live collection are reconstructed offline by re-measuring the subtree at each
+      month's commit (<em>scripts/backfill.py</em>), a one-time run, not CI.
     </p>
   </section>
 
@@ -420,6 +431,15 @@ const LANG_COLORS = {
   "Fortran 77":"#4fd1c5", "Python":"#f2b441", "CMake":"#f2685a", "Other":"#7d8da3",
 };
 
+// The three series the source panel can plot, keyed by their field in loc.json.
+const LOC_METRICS = {
+  code:  {title:"Source size", unit:"lines", color:"var(--sig)"},
+  nyi:   {title:"TODO / not-yet-implemented markers", unit:"markers", color:"#f2b441"},
+  tests: {title:"Test-suite size", unit:"files", color:"#5aa9f7"},
+};
+let locMetric = "code";
+let LOC_SNAPS = [];
+
 async function bootLoc(){
   let loc;
   try{
@@ -427,6 +447,7 @@ async function bootLoc(){
   }catch(e){ return; } // no LOC data yet — leave the panel hidden
   const snaps = (loc.snapshots || []).filter(s => s.code != null);
   if(!snaps.length) return;
+  LOC_SNAPS = snaps;
 
   document.getElementById("loc-panel").hidden = false;
   const last = snaps[snaps.length-1];
@@ -439,15 +460,24 @@ async function bootLoc(){
     `<div style="font-size:22px;color:var(--ink)">${fmt(last.code)} <span style="color:var(--dim);font-size:13px">lines</span></div>` +
     `<div>${fmt(last.files)} files${deltaTxt}</div>`;
 
-  renderLocChart(snaps);
+  renderLocChart();
   renderLocLangs(last.by_language || {});
 }
 
-function renderLocChart(snaps){
+function renderLocChart(){
+  const cfg = LOC_METRICS[locMetric];
+  // Older live snapshots predate the NYI/test fields; show only points that have
+  // the selected metric so a half-populated series still draws cleanly.
+  const snaps = LOC_SNAPS.filter(s => s[locMetric] != null);
+  document.getElementById("loc-title").innerHTML =
+    `${cfg.title} · <span style="font-family:var(--mono);color:${cfg.color}">flang/</span>`;
+  // The per-language breakdown only describes the lines-of-code view.
+  document.getElementById("loc-langs").style.display = locMetric==="code" ? "" : "none";
   const svg=document.getElementById("loc-chart");
+  if(!snaps.length){ svg.innerHTML = `<text x="360" y="140" class="axt" text-anchor="middle">no data for this metric yet</text>`; return; }
   const W=720,H=280,padL=58,padR=16,padT=16,padB=34;
   const iw=W-padL-padR, ih=H-padT-padB;
-  const vals=snaps.map(s=>s.code);
+  const vals=snaps.map(s=>s[locMetric]);
   const minV=Math.min(...vals), maxV=Math.max(...vals);
   const lo=Math.max(0, minV-Math.ceil((maxV-minV)*0.15)-1);
   const hi=maxV+Math.ceil((maxV-minV)*0.15)+1;
@@ -469,13 +499,20 @@ function renderLocChart(snaps){
     g+=`<text x="${xOf(i).toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${dateTickLabel(s.date, snaps[i-1]?.date, snaps[i+1]?.date)}</text>`;
   });
   g+=releaseMarkers(snaps.map(s=>+new Date(s.date)), snaps.map((s,i)=>xOf(i)), padT, ih);
-  const path=snaps.map((s,i)=>`${i?'L':'M'}${xOf(i).toFixed(1)} ${yOf(s.code).toFixed(1)}`).join(" ");
-  g+=`<path d="${path}" class="series-line" stroke="var(--sig)"/>`;
+  const path=snaps.map((s,i)=>`${i?'L':'M'}${xOf(i).toFixed(1)} ${yOf(s[locMetric]).toFixed(1)}`).join(" ");
+  g+=`<path d="${path}" class="series-line" stroke="${cfg.color}"/>`;
   snaps.forEach((s,i)=>{
-    g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(s.code).toFixed(1)}" r="2.6" fill="var(--sig)"><title>${s.date}: ${fmt(s.code)} lines</title></circle>`;
+    g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(s[locMetric]).toFixed(1)}" r="2.6" fill="${cfg.color}"><title>${s.date}: ${fmt(s[locMetric])} ${cfg.unit}</title></circle>`;
   });
   svg.innerHTML=g;
 }
+
+document.getElementById("loc-switch").addEventListener("click",(e)=>{
+  const btn=e.target.closest("button"); if(!btn) return;
+  locMetric=btn.dataset.metric;
+  document.querySelectorAll("#loc-switch button").forEach(x=>x.classList.toggle("on",x===btn));
+  renderLocChart();
+});
 
 function renderLocLangs(byLang){
   const wrap=document.getElementById("loc-langs");
