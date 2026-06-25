@@ -219,10 +219,10 @@
         {
           "open_issues": 131,
           "closed_issues": 207,
-          "open_prs": 168,
-          "merged_prs": 5339,
+          "open_prs": 172,
+          "merged_prs": 5340,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
@@ -368,7 +368,7 @@
           "open_prs": 0,
           "merged_prs": 7,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
@@ -514,7 +514,7 @@
           "open_prs": 0,
           "merged_prs": 5,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
@@ -657,10 +657,10 @@
         {
           "open_issues": 129,
           "closed_issues": 369,
-          "open_prs": 84,
-          "merged_prs": 1811,
+          "open_prs": 85,
+          "merged_prs": 1812,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
@@ -806,7 +806,7 @@
           "open_prs": 32,
           "merged_prs": 513,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
@@ -952,7 +952,7 @@
           "open_prs": 3,
           "merged_prs": 339,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
@@ -1098,7 +1098,7 @@
           "open_prs": 13,
           "merged_prs": 287,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
@@ -1244,7 +1244,7 @@
           "open_prs": 7,
           "merged_prs": 85,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
@@ -1387,10 +1387,10 @@
         {
           "open_issues": 3,
           "closed_issues": 5,
-          "open_prs": 16,
-          "merged_prs": 603,
+          "open_prs": 17,
+          "merged_prs": 604,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
@@ -1533,10 +1533,10 @@
         {
           "open_issues": 24,
           "closed_issues": 47,
-          "open_prs": 65,
-          "merged_prs": 744,
+          "open_prs": 64,
+          "merged_prs": 745,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
@@ -1682,7 +1682,7 @@
           "open_prs": 0,
           "merged_prs": 4,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
@@ -1828,7 +1828,7 @@
           "open_prs": 18,
           "merged_prs": 456,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
@@ -1974,11 +1974,11 @@
           "open_prs": 19,
           "merged_prs": 341,
           "date": "2026-06-25",
-          "collected_at": "2026-06-25T19:11:41.865910+00:00"
+          "collected_at": "2026-06-25T21:07:33.187891+00:00"
         }
       ],
       "backfilled": true
     }
   },
-  "updated_at": "2026-06-25T21:02:05.884726+00:00"
+  "updated_at": "2026-06-25T21:07:33.187891+00:00"
 }
