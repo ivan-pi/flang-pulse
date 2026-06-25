@@ -156,11 +156,13 @@
       <em>git log --numstat</em>. Rising commits / lines / contributors mean
       development is accelerating; falling means it is cooling off. Dashed
       verticals mark LLVM <em>X.Y.0</em> releases. Contributors are unique author emails per month.
-      The <em>onboarding</em> view stacks each month's merges by whether the author is a
-      first-time contributor (their first-ever commit that month) or returning, with the
-      rolling 3-month active-contributor count on the right axis — so you can see whether a
-      growing community is actually translating into integrated code. Merges are approximated
-      by non-merge commits, matching LLVM's squash-style PR workflow.
+      The <em>onboarding</em> view bars the number of <em>first-time</em> contributors each
+      month — people whose first-ever commit to <em>flang/</em> + <em>flang-rt/</em> lands that
+      month — with the rolling 3-month active-contributor count on the right axis, so you can
+      see whether the project keeps attracting new people and retaining an active base.
+      First-time status is judged against the project's full history, not just the window
+      shown. Contributors are identified by commit-author email, so an email change can read
+      as a new person.
     </p>
   </section>
 
@@ -519,10 +521,8 @@ const ACT_METRICS = {
             series:[{key:"authors",color:"#f2b441",label:"unique contributors"}]},
   onboarding: {title:"New-contributor onboarding",
             type:"bars",
-            // Stacked merges: first-time work at the base, returning on top.
-            stackTotal:"commits",
-            bars:[{key:"new_author_commits",color:"#39d98a",label:"by first-time contributors"},
-                  {compute:m=>(m.commits||0)-(m.new_author_commits||0),color:"#3a4a66",label:"by returning contributors"}],
+            stackTotal:"new_authors",
+            bars:[{key:"new_authors",color:"#39d98a",label:"first-time contributors"}],
             secondary:{key:"active_rolling",color:"#f2b441",label:"active contributors · 3-mo rolling",positive:true}},
 };
 
