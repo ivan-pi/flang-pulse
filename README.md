@@ -4,64 +4,74 @@ A self-updating dashboard that tracks development activity in the
 [LLVM](https://github.com/llvm/llvm-project) Fortran stack — per label
 (`flang`, `flang:ir`, `flang:openmp`, `openmp`, `openacc`, and so on).
 
-A GitHub Action snapshots issue and PR counts twice a week, appends them to
-`data/history.json`, also records the size of the `flang/` source tree to
-`data/loc.json`, and deploys a static site that graphs each metric over time.
-No server, no database — the committed JSON *is* the database.
+A GitHub Action runs twice a week. It snapshots issue/PR counts from the
+GitHub API and derives development-activity metrics from `git log` over the
+Fortran stack (`flang/` + `flang-rt/`), commits the results as JSON, and
+deploys a static site that graphs each metric over time. No server, no
+database — the committed JSON *is* the database.
 
 ![open issues over time](docs/preview.png)
 
 ## What it tracks
 
-For every configured label, per snapshot:
+**Per label** (from the GitHub Search API), one line per label:
 
-- open issues
-- closed issues
-- open pull requests
-- merged pull requests
+- open issues · closed issues · open pull requests · merged pull requests
 
-The site graphs any of these as a multi-line time series, one line per label,
-with a metric switcher and a toggleable legend.
+**Across the Fortran stack** (`flang/` + `flang-rt/`, from `git log`):
 
-Plus, repository-wide (not per-label):
+- lines changed per month (added / removed) — *the volume of change*
+- commits per month
+- active contributors per month
+- source size over time (`cloc`, with a per-language breakdown)
+- all-time scale: total commits, distinct contributors, project age
 
-- total lines of code in the `flang/` subtree, with a per-language breakdown
-
-shown in a dedicated "Source size" panel.
+LLVM `X.Y.0` releases are drawn as dashed vertical markers across every time
+series, so you can see how activity moves around release boundaries.
 
 ## How the history works
 
-GitHub does not store historical counts — the search API only answers
-"how many right now." Two mechanisms fill that gap:
+GitHub does not store historical counts — the search API only answers "how
+many right now." For **labels**, two mechanisms fill the gap:
 
-1. **Backfill (first run).** For each label, the collector reconstructs
-   monthly open-issue history from issue timestamps. The open count at month
-   *m* equals issues created before *m* minus issues closed before *m* — an
-   exact figure, not an estimate. This populates the graph immediately,
+1. **Backfill (first run).** The collector reconstructs monthly open-issue
+   history from issue timestamps: open count at month *m* = issues created
+   before *m* minus issues closed before *m* — exact, not interpolated.
    `BACKFILL_MONTHS` deep (default 18).
 
-2. **Snapshots (every run).** Each run records that day's exact counts for
-   all four metrics and appends them. Over time the forward history becomes a
-   precise record. Reconstructed points are flagged `"reconstructed": true`
-   so the two are distinguishable.
+2. **Snapshots (every run).** Each run records that day's exact counts and
+   appends them. Reconstructed points are flagged `"reconstructed": true`.
 
-Lines of code has no backfill — it starts as a single point and builds
-forward, one snapshot per run (see *Lines of code* below).
+For the **git-derived** metrics there is no such problem — git *is* the
+historical record. Each run recomputes the trailing `ACTIVITY_MONTHS` window
+(default 36) directly from the clone, so the history is always exact.
 
-## Lines of code
+## The git metrics (and why they need a clone)
 
-`scripts/loc.py` measures the `flang/` subtree of llvm/llvm-project. Cloning
-all of llvm-project is expensive, so it does the cheap thing: a **blobless,
-depth-1, sparse checkout** of just `flang/` (`git clone --filter=blob:none
---depth=1 --no-checkout` then `git sparse-checkout set flang`), which fetches
-only that subtree at HEAD — tens of MB, not the multi-GB full repo — and runs
-[`cloc`](https://github.com/AlDanial/cloc) over it. It appends one dated point
-to `data/loc.json` per run, recording total code/comment/blank lines, file
-count, the HEAD sha, and a per-language code-line breakdown.
+The headline question — *how much code is flowing into flang, and is it
+speeding up or slowing down?* — has no GitHub API answer. The API exposes
+line deltas per *commit*, never per *path*, so per-folder churn can only come
+from `git log --numstat`. `scripts/git_stats.py` reads a local clone and
+writes three datasets:
 
-This is whole-subtree size over time, not a per-label figure — GitHub exposes
-line deltas per *repository*, not per *label*, so there is no accurate
-per-label LOC to graph.
+- `data/activity.json` — monthly commits / authors / insertions / deletions,
+  combined and split per path, plus all-time totals
+- `data/releases.json` — `llvmorg-X.Y.0` tags with dates (the chart markers)
+- `data/loc.json` — current size of both subtrees (`cloc`), appended per run
+
+Cloning all of llvm-project is expensive, which is the whole concern. Two
+things keep the cost down:
+
+1. **Blobless clone** (`git clone --filter=blob:none`) — downloads the commit
+   and tree history but *not* file contents, which is all `git log` needs to
+   attribute commits and authors to paths.
+2. **Cached between runs** — the workflow stores the clone with
+   `actions/cache` and only `git fetch`es new commits on later runs, so the
+   heavy download is a one-time cost. Recomputing the metrics from the cached
+   clone needs no network.
+
+This is whole-subtree activity, not per-label — line deltas exist per
+repository/path, not per GitHub label.
 
 ## Setup
 
@@ -104,13 +114,18 @@ failing the run.
 # collect issue/PR counts (needs a token to avoid the ~10 req/min limit)
 GITHUB_TOKEN=ghp_xxx python scripts/collect.py
 
-# collect lines of code (needs git and cloc on PATH)
-python scripts/loc.py
+# collect git metrics: point LLVM_REPO at a clone (blobless is fine).
+# needs git, and cloc for the size snapshot.
+git clone --filter=blob:none --no-checkout https://github.com/llvm/llvm-project.git /tmp/llvm
+LLVM_REPO=/tmp/llvm python scripts/git_stats.py
 
 # serve — the site tries data/ then ../data/, so this layout works
 python -m http.server 8000
 # open http://localhost:8000/site/index.html
 ```
+
+`ACTIVITY_MONTHS` (default 36) controls how many months of history the
+activity charts cover.
 
 ## Adjusting cadence
 
@@ -123,12 +138,14 @@ run just means one fewer point.
 
 ```
 scripts/collect.py            issue/PR collector (GitHub Search API)
-scripts/loc.py                lines-of-code collector (sparse checkout + cloc)
+scripts/git_stats.py          git-log collector (churn / contributors / releases / size)
 data/labels.json              tracked labels (edit this)
 data/history.json             accumulated issue/PR series (machine-written)
-data/loc.json                 accumulated lines-of-code series (machine-written)
+data/activity.json            monthly churn/commits/contributors (machine-written)
+data/releases.json            llvmorg release tags + dates (machine-written)
+data/loc.json                 source-size series (machine-written)
 site/index.html               the dashboard (static, no build step)
-.github/workflows/collect.yml schedule + commit + Pages deploy
+.github/workflows/collect.yml schedule + cached clone + commit + Pages deploy
 ```
 
 Not affiliated with the LLVM project.
