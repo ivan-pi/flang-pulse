@@ -4,8 +4,8 @@
     "flang",
     "flang-rt"
   ],
-  "head_sha": "9d6e0dd15a5f9aa975ffaa45da183c6c05cb8a03",
-  "updated_at": "2026-06-26T07:25:44.350055+00:00",
+  "head_sha": "4bf16dccc6305237ac5bbe0e70065c2df70edf2b",
+  "updated_at": "2026-06-26T08:08:18.036941+00:00",
   "months": [
     {
       "commits": 108,
