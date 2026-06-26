@@ -216,7 +216,6 @@ let REL = [];          // release tags, for chart markers
 let ACT = null;        // git activity dataset
 let actMetric = "churn";
 let LATEST_LOC = null;  // newest size snapshot, shared with the scale cards
-const YEAR_MONTH_LEN = 7;
 const MIN_AXIS_ABS = 1;
 
 const fmt = (n) => n == null ? "––" : n.toLocaleString("en-US");
@@ -270,13 +269,50 @@ function seriesFor(id, m){
   return snaps;
 }
 
-function dateTickLabel(date, prevDate, nextDate){
-  const ym = date.slice(0, YEAR_MONTH_LEN);
-  const prevYm = prevDate ? prevDate.slice(0, YEAR_MONTH_LEN) : "";
-  const nextYm = nextDate ? nextDate.slice(0, YEAR_MONTH_LEN) : "";
-  // If neighboring points share the same month, use full yy-mm-dd labels to avoid duplicate yy-mm ticks.
-  if(ym === prevYm || ym === nextYm) return date.slice(2);
-  return date.slice(2, YEAR_MONTH_LEN);
+// Map epoch-ms times to pixel x, proportional to elapsed time (not point index)
+// so two points a day apart sit a day apart, and a month-long gap reads as a
+// month. Returns a function of a single time value; pass any t to place it.
+function timeScale(times, padL, iw){
+  const tMin = times[0], tMax = times[times.length-1], span = tMax - tMin;
+  return (t) => padL + (span>0 ? ((t - tMin)/span)*iw : 0);
+}
+
+// yy-mm label for an epoch-ms time, e.g. 2026-04-01 → "26-04".
+function ymLabel(t){
+  const d = new Date(t);
+  return `${String(d.getUTCFullYear()).slice(2)}-${String(d.getUTCMonth()+1).padStart(2,"0")}`;
+}
+
+// Quarter-boundary ticks (Jan/Apr/Jul/Oct) spanning [tMin, tMax]. These are the
+// only x labels we draw — finer points are reachable via hover — so the axis
+// stays readable regardless of how densely points are collected.
+function quarterlyTicks(tMin, tMax){
+  const d0 = new Date(tMin);
+  let y = d0.getUTCFullYear();
+  let m = Math.ceil(d0.getUTCMonth()/3)*3;   // round up to next quarter start
+  if(m>11){ m-=12; y++; }
+  const out=[];
+  for(let t=Date.UTC(y,m,1); t<=tMax; m+=3){
+    if(m>11){ m-=12; y++; }
+    t=Date.UTC(y,m,1);
+    if(t>tMax) break;
+    out.push({ t, label: ymLabel(t) });
+  }
+  return out;
+}
+
+// SVG <text> x-axis labels at quarter boundaries. Falls back to the first/last
+// point when the visible range is shorter than a quarter, so the axis is never
+// blank.
+function xAxisTicks(times, scale, yBaseline){
+  let ticks = quarterlyTicks(times[0], times[times.length-1]);
+  if(!ticks.length){
+    ticks = [{ t:times[0], label:ymLabel(times[0]) }];
+    if(times.length>1) ticks.push({ t:times[times.length-1], label:ymLabel(times[times.length-1]) });
+  }
+  return ticks.map(tk =>
+    `<text x="${scale(tk.t).toFixed(1)}" y="${yBaseline}" class="axt" text-anchor="middle">${tk.label}</text>`
+  ).join("");
 }
 
 function render(){
@@ -328,12 +364,16 @@ function renderChart(){
   if(!all.length){ svg.innerHTML = `<text x="${W/2}" y="${H/2}" class="axt" text-anchor="middle">no data for this metric</text>`; return; }
 
   const dates = [...dateSet].sort();
+  const times = dates.map(d=>+new Date(d));
   const minV=Math.min(...all), maxV=Math.max(...all);
   const lo=Math.max(0, minV - Math.ceil((maxV-minV)*0.1) - 1);
   const hi=maxV + Math.ceil((maxV-minV)*0.1) + 1;
   const span=hi-lo||1;
 
-  const xOf=(date)=> padL + (dates.length<2?0:(dates.indexOf(date)/(dates.length-1))*iw);
+  // x is proportional to collection time, so dense points (e.g. a weekly
+  // snapshot a day after a monthly one) sit close together instead of a month apart.
+  const scaleX=timeScale(times, padL, iw);
+  const xOf=(date)=> scaleX(+new Date(date));
   const yOf=(v)=> padT + ih - ((v-lo)/span)*ih;
 
   let g="";
@@ -344,14 +384,9 @@ function renderChart(){
     g+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" class="gl"/>`;
     g+=`<text x="${padL-8}" y="${(y+3).toFixed(1)}" class="axt" text-anchor="end">${v}</text>`;
   }
-  const xstep=Math.ceil(dates.length/7);
-  dates.forEach((d,i)=>{
-    if(i%xstep!==0 && i!==dates.length-1) return;
-    const x=xOf(d);
-    g+=`<text x="${x.toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${dateTickLabel(d, dates[i-1], dates[i+1])}</text>`;
-  });
+  g+=xAxisTicks(times, scaleX, H-10);
 
-  g+=releaseMarkers(dates.map(d=>+new Date(d)), dates.map(d=>xOf(d)), padT, ih);
+  g+=releaseMarkers(times, times.map(t=>scaleX(t)), padT, ih);
 
   for(const id of ids){
     const meta=labelMeta(id);
@@ -364,12 +399,14 @@ function renderChart(){
     }
   }
 
-  // invisible hover columns
+  // invisible hover columns — each spans the midpoints to its neighbours so the
+  // hit area follows the (now uneven) point spacing instead of a fixed width.
   g+=`<g id="hovers">`;
+  const xs=times.map(t=>scaleX(t));
   dates.forEach((d,i)=>{
-    const x=xOf(d);
-    const w=iw/Math.max(1,dates.length-1);
-    g+=`<rect x="${(x-w/2).toFixed(1)}" y="${padT}" width="${w.toFixed(1)}" height="${ih}" fill="transparent" data-date="${d}"/>`;
+    const left  = i===0 ? padL : (xs[i-1]+xs[i])/2;
+    const right = i===dates.length-1 ? padL+iw : (xs[i]+xs[i+1])/2;
+    g+=`<rect x="${left.toFixed(1)}" y="${padT}" width="${Math.max(0,right-left).toFixed(1)}" height="${ih}" fill="transparent" data-date="${d}"/>`;
   });
   g+=`</g>`;
 
@@ -487,7 +524,9 @@ function renderLocChart(){
   const lo=Math.max(0, minV-Math.ceil((maxV-minV)*0.15)-1);
   const hi=maxV+Math.ceil((maxV-minV)*0.15)+1;
   const span=hi-lo||1;
-  const xOf=i=> padL + (snaps.length<2?0:(i/(snaps.length-1))*iw);
+  const times=snaps.map(s=>+new Date(s.date));
+  const scaleX=timeScale(times, padL, iw);
+  const xOf=i=> scaleX(times[i]);
   const yOf=v=> padT + ih - ((v-lo)/span)*ih;
 
   let g="";
@@ -498,12 +537,8 @@ function renderLocChart(){
     g+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" class="gl"/>`;
     g+=`<text x="${padL-8}" y="${(y+3).toFixed(1)}" class="axt" text-anchor="end">${fmt(v)}</text>`;
   }
-  const xstep=Math.ceil(snaps.length/7);
-  snaps.forEach((s,i)=>{
-    if(i%xstep!==0 && i!==snaps.length-1) return;
-    g+=`<text x="${xOf(i).toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${dateTickLabel(s.date, snaps[i-1]?.date, snaps[i+1]?.date)}</text>`;
-  });
-  g+=releaseMarkers(snaps.map(s=>+new Date(s.date)), snaps.map((s,i)=>xOf(i)), padT, ih);
+  g+=xAxisTicks(times, scaleX, H-10);
+  g+=releaseMarkers(times, times.map(t=>scaleX(t)), padT, ih);
   const path=snaps.map((s,i)=>`${i?'L':'M'}${xOf(i).toFixed(1)} ${yOf(s[locMetric]).toFixed(1)}`).join(" ");
   g+=`<path d="${path}" class="series-line" stroke="${cfg.color}"/>`;
   snaps.forEach((s,i)=>{
@@ -606,7 +641,9 @@ function renderActivity(){
   const months=ACT.months;
   const isBars = cfg.type === "bars";
   const baseSeries = isBars ? cfg.bars : cfg.series;
-  const xOf=i=> padL + (months.length<2?0:(i/(months.length-1))*iw);
+  const times=months.map(m=>+new Date(m.month+"-01"));
+  const scaleX=timeScale(times, padL, iw);
+  const xOf=i=> scaleX(times[i]);
 
   // Primary (left) axis. For stacked bars the height is the stack total.
   let maxV=0;
@@ -656,13 +693,9 @@ function renderActivity(){
     if(!secPositive)
       g+=`<line x1="${padL}" y1="${yOfSec(0).toFixed(1)}" x2="${W-padR}" y2="${yOfSec(0).toFixed(1)}" class="gl" stroke-dasharray="3 3"/>`;
   }
-  const xstep=Math.ceil(months.length/8);
-  months.forEach((m,i)=>{
-    if(i%xstep!==0 && i!==months.length-1) return;
-    g+=`<text x="${xOf(i).toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${m.month.slice(2)}</text>`;
-  });
+  g+=xAxisTicks(times, scaleX, H-10);
 
-  g+=releaseMarkers(months.map(m=>+new Date(m.month+"-01")), months.map((m,i)=>xOf(i)), padT, ih);
+  g+=releaseMarkers(times, times.map(t=>scaleX(t)), padT, ih);
 
   if(isBars){
     const slot = months.length>1 ? iw/(months.length-1) : iw;
