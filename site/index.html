@@ -431,10 +431,40 @@ document.getElementById("switch").addEventListener("click", (e)=>{
 });
 
 // ── Lines of code panel (data/loc.json) ───────────────────────────────
+// Display order doubles as the series order; C++ leads since the flang
+// frontend is written in C++ and is the language we most care to track.
 const LANG_COLORS = {
-  "C++":"#5aa9f7", "C/C++ Header":"#b48cf2", "Fortran 90":"#39d98a",
-  "Fortran 77":"#4fd1c5", "Python":"#f2b441", "CMake":"#f2685a", "Other":"#7d8da3",
+  "C++":"#5aa9f7", "Fortran 90":"#39d98a", "Fortran 77":"#4fd1c5",
+  "Python":"#f2b441", "CMake":"#f2685a", "Other":"#7d8da3",
 };
+
+// cloc reports headers as a "C/C++ Header" pseudo-language, but the flang
+// headers are C++ — there is no "C/C++" language — so fold them into the C++
+// count and drop the bogus label. Applied at render time so historical
+// snapshots that still carry the separate field display consistently.
+function normLangs(byLang){
+  const out={};
+  for(const [lang,code] of Object.entries(byLang||{})){
+    const key = lang==="C/C++ Header" ? "C++" : lang;
+    out[key]=(out[key]||0)+code;
+  }
+  return out;
+}
+
+// One {lang,color,vals} series per language across the given snapshots, in the
+// LANG_COLORS display order with any unexpected languages appended.
+function locLangSeries(snaps){
+  const norm = snaps.map(s=>normLangs(s.by_language||{}));
+  const seen = new Set();
+  norm.forEach(m=>Object.keys(m).forEach(l=>seen.add(l)));
+  const known = Object.keys(LANG_COLORS).filter(l=>seen.has(l));
+  const extra = [...seen].filter(l=>!(l in LANG_COLORS));
+  return [...known, ...extra].map(lang=>({
+    lang,
+    color: LANG_COLORS[lang]||"#7d8da3",
+    vals: norm.map(m=> m[lang]!=null ? m[lang] : null),
+  }));
+}
 
 // The three series the source panel can plot, keyed by their field in loc.json.
 const LOC_METRICS = {
@@ -482,8 +512,15 @@ function renderLocChart(){
   if(!snaps.length){ svg.innerHTML = `<text x="360" y="140" class="axt" text-anchor="middle">no data for this metric yet</text>`; return; }
   const W=720,H=280,padL=58,padR=16,padT=16,padB=34;
   const iw=W-padL-padR, ih=H-padT-padB;
-  const vals=snaps.map(s=>s[locMetric]);
-  const minV=Math.min(...vals), maxV=Math.max(...vals);
+
+  // The source-size view plots one line per language (the breakdown shown in
+  // the legend); the other metrics are a single total series.
+  const series = locMetric==="code"
+    ? locLangSeries(snaps)
+    : [{lang:null, color:cfg.color, vals:snaps.map(s=>s[locMetric])}];
+
+  const allVals = series.flatMap(s=>s.vals).filter(v=>v!=null);
+  const minV=Math.min(...allVals), maxV=Math.max(...allVals);
   const lo=Math.max(0, minV-Math.ceil((maxV-minV)*0.15)-1);
   const hi=maxV+Math.ceil((maxV-minV)*0.15)+1;
   const span=hi-lo||1;
@@ -504,11 +541,22 @@ function renderLocChart(){
     g+=`<text x="${xOf(i).toFixed(1)}" y="${H-10}" class="axt" text-anchor="middle">${dateTickLabel(s.date, snaps[i-1]?.date, snaps[i+1]?.date)}</text>`;
   });
   g+=releaseMarkers(snaps.map(s=>+new Date(s.date)), snaps.map((s,i)=>xOf(i)), padT, ih);
-  const path=snaps.map((s,i)=>`${i?'L':'M'}${xOf(i).toFixed(1)} ${yOf(s[locMetric]).toFixed(1)}`).join(" ");
-  g+=`<path d="${path}" class="series-line" stroke="${cfg.color}"/>`;
-  snaps.forEach((s,i)=>{
-    g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(s[locMetric]).toFixed(1)}" r="2.6" fill="${cfg.color}"><title>${s.date}: ${fmt(s[locMetric])} ${cfg.unit}</title></circle>`;
-  });
+  for(const ser of series){
+    // Build the path one segment at a time so a language missing from some
+    // snapshots leaves a gap rather than a line drawn through zero.
+    let path="", pen=false;
+    ser.vals.forEach((v,i)=>{
+      if(v==null){ pen=false; return; }
+      path += `${pen?'L':'M'}${xOf(i).toFixed(1)} ${yOf(v).toFixed(1)} `;
+      pen=true;
+    });
+    g+=`<path d="${path.trim()}" class="series-line" stroke="${ser.color}" fill="none"/>`;
+    const label = ser.lang ? `${ser.lang} · ` : "";
+    ser.vals.forEach((v,i)=>{
+      if(v==null) return;
+      g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="2.6" fill="${ser.color}"><title>${snaps[i].date}: ${label}${fmt(v)} ${cfg.unit}</title></circle>`;
+    });
+  }
   svg.innerHTML=g;
 }
 
@@ -521,7 +569,7 @@ document.getElementById("loc-switch").addEventListener("click",(e)=>{
 
 function renderLocLangs(byLang){
   const wrap=document.getElementById("loc-langs");
-  const entries=Object.entries(byLang).sort((a,b)=>b[1]-a[1]);
+  const entries=Object.entries(normLangs(byLang)).sort((a,b)=>b[1]-a[1]);
   wrap.innerHTML = entries.map(([lang,code])=>{
     const c=LANG_COLORS[lang]||"#7d8da3";
     return `<button style="cursor:default"><span class="sw" style="background:${c}"></span>${lang}<span class="lv">${fmt(code)}</span></button>`;

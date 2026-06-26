@@ -55,7 +55,11 @@ ACTIVITY = ROOT / "data" / "activity.json"
 RELEASES = ROOT / "data" / "releases.json"
 LOC = ROOT / "data" / "loc.json"
 
-TRACKED_LANGS = ["C++", "C/C++ Header", "Fortran 90", "Fortran 77", "Python", "CMake"]
+TRACKED_LANGS = ["C++", "Fortran 90", "Fortran 77", "Python", "CMake"]
+
+# cloc reports headers as a "C/C++ Header" pseudo-language; the flang headers
+# are C++ (there is no "C/C++" language), so fold them into the C++ count.
+LANG_ALIASES = {"C/C++ Header": "C++"}
 
 # Print a heartbeat line every this many commits while streaming.
 HEARTBEAT_EVERY = 500
@@ -417,8 +421,9 @@ def cloc_counts() -> dict | None:
         if lang in ("header", "SUM"):
             continue
         code = int(stats.get("code", 0))
+        lang = LANG_ALIASES.get(lang, lang)
         if lang in TRACKED_LANGS:
-            by_lang[lang] = code
+            by_lang[lang] = by_lang.get(lang, 0) + code
         else:
             other += code
     if other:
