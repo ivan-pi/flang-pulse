@@ -27,13 +27,11 @@
   header{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;
     align-items:flex-start;border-bottom:1px solid var(--line);
     padding-bottom:22px;margin-bottom:22px;}
-  .live{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);
-    font-size:11px;letter-spacing:.18em;color:var(--sig);margin-bottom:10px;}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--sig);}
   h1{font-family:var(--mono);font-size:clamp(28px,5vw,44px);font-weight:700;
     margin:0;letter-spacing:-.02em;line-height:1;}
   .slash{color:var(--sig);}
   .sub{color:var(--dim);margin:11px 0 0;max-width:56ch;font-size:14px;line-height:1.5;}
+  .disclosure{font-size:12px;margin-top:7px;opacity:.8;}
   .meta{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:right;
     display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
   .repo-link{color:var(--dim);text-decoration:none;}
@@ -106,9 +104,9 @@
   <main class="wrap">
   <header>
     <div>
-      <span class="live"><span class="dot"></span><span id="status">LOADING</span></span>
       <h1>flang<span class="slash">/</span>pulse</h1>
       <p class="sub">Per-label development telemetry for the LLVM Fortran stack — llvm/llvm-project. Updated weekly.</p>
+      <p class="sub disclosure">This website is generated with Claude and Copilot.</p>
     </div>
     <div class="meta">
       <div id="updated">—</div>
@@ -116,7 +114,6 @@
       <a class="repo-link" href="https://github.com/ivan-pi/flang-pulse" target="_blank" rel="noopener noreferrer">github.com/ivan-pi/flang-pulse</a>
     </div>
   </header>
-  <p class="caveat">This website is generated with Claude and Copilot.</p>
 
   <div class="cards" id="cards"></div>
 
@@ -247,12 +244,10 @@ async function boot(){
   try{
     DATA = await fetchJSON(["data/history.json", "../data/history.json"]);
   }catch(e){
-    document.getElementById("status").textContent = "NO DATA";
     document.getElementById("chart-wrap").innerHTML =
       '<div class="empty">No history yet. The collector writes data/history.json on its first run.<br>Trigger the workflow in the Actions tab, or wait for the scheduled run.</div>';
     return;
   }
-  document.getElementById("status").textContent = "LIVE";
   document.getElementById("updated").textContent = "updated · " + relTime(DATA.updated_at);
   const total = Object.values(DATA.series).reduce((a,s)=>a+s.snapshots.length,0);
   document.getElementById("point-count").textContent = total + " data points";
