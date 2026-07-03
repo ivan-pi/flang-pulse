@@ -4,8 +4,8 @@
     "flang",
     "flang-rt"
   ],
-  "head_sha": "4bf16dccc6305237ac5bbe0e70065c2df70edf2b",
-  "updated_at": "2026-06-26T08:08:18.036941+00:00",
+  "head_sha": "813f06de0df4f0af5601cb1b109eb19b2373cad3",
+  "updated_at": "2026-07-03T07:12:02.490780+00:00",
   "months": [
     {
       "commits": 108,
@@ -294,37 +294,63 @@
       "net": 12229
     },
     {
-      "commits": 186,
-      "insertions": 25126,
-      "deletions": 9026,
-      "files": 1197,
+      "commits": 217,
+      "insertions": 28406,
+      "deletions": 10847,
+      "files": 1320,
       "by_path": {
         "flang": {
-          "commits": 178,
-          "insertions": 24871,
-          "deletions": 8923,
-          "files": 1176
+          "commits": 207,
+          "insertions": 28142,
+          "deletions": 10744,
+          "files": 1295
         },
         "flang-rt": {
-          "commits": 12,
-          "insertions": 255,
+          "commits": 14,
+          "insertions": 264,
           "deletions": 103,
-          "files": 21
+          "files": 25
         }
       },
-      "active_rolling": 99,
+      "active_rolling": 104,
       "month": "2026-06",
-      "authors": 57,
-      "new_authors": 6,
-      "churn": 34152,
-      "net": 16100
+      "authors": 62,
+      "new_authors": 8,
+      "churn": 39253,
+      "net": 17559
+    },
+    {
+      "commits": 13,
+      "insertions": 2707,
+      "deletions": 219,
+      "files": 71,
+      "by_path": {
+        "flang": {
+          "commits": 11,
+          "insertions": 2585,
+          "deletions": 198,
+          "files": 61
+        },
+        "flang-rt": {
+          "commits": 3,
+          "insertions": 122,
+          "deletions": 21,
+          "files": 10
+        }
+      },
+      "active_rolling": 84,
+      "month": "2026-07",
+      "authors": 12,
+      "new_authors": 1,
+      "churn": 2926,
+      "net": 2488
     }
   ],
   "totals": {
-    "commits": 2138,
-    "authors": 206,
+    "commits": 2182,
+    "authors": 211,
     "first_commit": "2025-07-15",
-    "last_commit": "2026-06-25"
+    "last_commit": "2026-07-02"
   },
   "since_commit": "3623fe6"
 }
