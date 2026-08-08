@@ -42,7 +42,7 @@ data/labels.json                tracked labels (the one hand-edited data file)
 data/history.json               accumulated issue/PR series        (machine-written)
 data/activity.json              monthly churn/commits/contributors (machine-written)
 data/releases.json              llvmorg release tags + dates       (machine-written)
-data/loc.json                   source-size series                 (machine-written)
+data/loc.json                   source size + code-health series   (machine-written)
 site/index.html                 the dashboard — static, vanilla JS/CSS, no build
 .github/workflows/collect.yml   schedule + cached clone + commit + Pages deploy
 ```

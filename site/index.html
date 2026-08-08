@@ -173,8 +173,11 @@
       <h2 id="loc-title">Source size · <span style="font-family:var(--mono);color:var(--sig)">flang/</span></h2>
       <div class="metric-switch" id="loc-switch">
         <button data-metric="code" class="on">lines of code</button>
-        <button data-metric="nyi">TODO / NYI</button>
+        <button data-metric="test_code">test lines</button>
         <button data-metric="tests">test files</button>
+        <button data-metric="nyi">TODO / NYI</button>
+        <button data-metric="asserts">assertions</button>
+        <button data-metric="fixme">FIXME</button>
       </div>
       <div class="meta" id="loc-now">—</div>
     </div>
@@ -184,13 +187,22 @@
     <div class="legend" id="loc-langs"></div>
     <p class="caveat">
       Measured over <em>flang/</em> + <em>flang-rt/</em> of llvm/llvm-project each run.
-      <em>lines of code</em> is <em>cloc</em> from a sparse checkout; <em>TODO / NYI</em>
-      counts <em>not-yet-implemented</em> markers (<em>TODO(…)</em>, <em>TODONYI(…)</em>,
+      <em>lines of code</em> is <em>cloc</em> from a sparse checkout — the whole
+      subtree, tests included. <em>test lines</em> carves out just the lit test tree
+      (mostly Fortran fixtures) and <em>test files</em> is its file count; both rise as
+      verified behaviour is added. <em>TODO / NYI</em> counts
+      <em>not-yet-implemented</em> markers (<em>TODO(…)</em>, <em>TODONYI(…)</em>,
       "not yet implemented") — a <em>falling</em> line means unimplemented Fortran
-      constructs are being filled in; <em>test files</em> is the size of the lit
-      test-suite, which rises as verified behaviour is added. Points before the first
-      live collection are reconstructed offline by re-measuring the subtree at each
-      month's commit (<em>scripts/backfill.py</em>), a one-time run, not CI.
+      constructs are being filled in. <em>assertions</em> counts internal defensive
+      checks in production code (<em>assert</em>, flang's <em>CHECK / CHECK_MSG / DIE</em>,
+      <em>llvm_unreachable</em>, <em>static_assert</em>, <em>report_fatal_error</em>;
+      the test trees, full of FileCheck <em>CHECK:</em> lines, are excluded) — hover a
+      point for its per-KLOC density. <em>FIXME</em> counts code-smell debt markers in
+      production code, distinct from <em>TODO / NYI</em> feature gaps: here a
+      <em>rising</em> line is debt accruing. Points before the first live collection are
+      reconstructed offline by re-measuring the subtree at each month's commit
+      (<em>scripts/backfill.py</em>), a one-time run, not CI; the assertion, FIXME and
+      test-line series populate from their first live run onward.
     </p>
   </section>
 
@@ -498,11 +510,14 @@ function locLangSeries(snaps){
   }));
 }
 
-// The three series the source panel can plot, keyed by their field in loc.json.
+// The series the source panel can plot, keyed by their field in loc.json.
 const LOC_METRICS = {
-  code:  {title:"Source size", unit:"lines", color:"var(--sig)"},
-  nyi:   {title:"TODO / not-yet-implemented markers", unit:"markers", color:"#f2b441"},
-  tests: {title:"Test-suite size", unit:"files", color:"#5aa9f7"},
+  code:      {title:"Source size", unit:"lines", color:"var(--sig)"},
+  test_code: {title:"Test-code volume", unit:"lines", color:"#39d98a"},
+  tests:     {title:"Test-suite size", unit:"files", color:"#5aa9f7"},
+  nyi:       {title:"TODO / not-yet-implemented markers", unit:"markers", color:"#f2b441"},
+  asserts:   {title:"Assertion sites · production code", unit:"sites", color:"#b48ead"},
+  fixme:     {title:"FIXME markers · production code", unit:"markers", color:"#f2685a"},
 };
 let locMetric = "code";
 let LOC_SNAPS = [];
@@ -584,7 +599,15 @@ function renderLocChart(){
     const label = ser.lang ? `${ser.lang} · ` : "";
     ser.vals.forEach((v,i)=>{
       if(v==null) return;
-      g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="2.6" fill="${ser.color}"><title>${snaps[i].date}: ${label}${fmt(v)} ${cfg.unit}</title></circle>`;
+      // For assertions, show the per-KLOC density against C++ (headers folded
+      // in) alongside the absolute count — the one ratio worth quoting, since
+      // its denominator stays inside a single language.
+      let extra="";
+      if(locMetric==="asserts"){
+        const cpp=normLangs(snaps[i].by_language||{})["C++"];
+        if(cpp) extra=` · ${(v/(cpp/1000)).toFixed(1)}/KLOC C++`;
+      }
+      g+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="2.6" fill="${ser.color}"><title>${snaps[i].date}: ${label}${fmt(v)} ${cfg.unit}${extra}</title></circle>`;
     });
   }
   svg.innerHTML=g;

@@ -74,6 +74,38 @@ NYI_PATTERNS = [r"TODO\(", r"TODONYI\(", r"not yet implemented"]
 TEST_DIRS = ["flang/test", "flang-rt/test"]
 RUN_PATTERN = r"\bRUN:"
 
+# Assertion sites. Flang carries its own always-on assertion macros —
+# CHECK()/CHECK_MSG()/DIE(), from flang/include/flang/Common/idioms.h — on top
+# of the C++/LLVM ones (assert, static_assert, llvm_unreachable,
+# report_fatal_error). Their count is a proxy for how much internal defensive
+# checking the compiler carries: a rising line means more invariants are being
+# asserted as the code grows. Counted over PRODUCTION code only (PROD_EXCLUDES),
+# because the test trees are full of FileCheck "CHECK:" directives (~86k lines
+# under flang/test alone) and gtest assertions that are not the compiler's own
+# checks. \b works in git grep -E (same gnulib extension as \bRUN: above), so a
+# bare "assert(" doesn't get double-attributed to the "static_assert(" pattern.
+ASSERT_PATTERNS = [
+    r"\bassert\(", r"\bstatic_assert\(", r"\bCHECK\(", r"\bCHECK_MSG\(",
+    r"\bDIE\(", r"\bllvm_unreachable\(", r"\breport_fatal_error\(",
+]
+
+# Code-smell debt markers. Deliberately *not* TODO()/TODONYI(): in flang those
+# are the not-yet-implemented macros, already tracked as `nyi` — a falling,
+# good-news series about missing features, not code quality. FIXME is the debt
+# tag flang actually uses (LLVM style sanctions it; XXX/HACK are all but unused),
+# and it points the other way: a rising FIXME count is debt accruing. Also
+# production-scoped, so a FIXME parked in a test fixture doesn't read as a
+# compiler-code smell.
+DEBT_PATTERNS = [r"FIXME"]
+
+# Pathspec exclusions that pare a flang/ + flang-rt/ scan down to production
+# code, dropping the lit-test and unit-test trees. Used by the assertion and
+# debt-tag counts (git pathspec magic; honoured by git grep).
+PROD_EXCLUDES = [
+    ":(exclude)flang/test", ":(exclude)flang-rt/test",
+    ":(exclude)flang/unittests", ":(exclude)flang-rt/unittests",
+]
+
 
 def git(*args: str) -> str:
     res = subprocess.run(
@@ -125,16 +157,21 @@ def _test_files(ref: str) -> int:
 
 
 def code_metrics(ref: str = "HEAD") -> dict:
-    """NYI markers and test-suite size at a commit, over flang/ + flang-rt/.
+    """NYI markers, test-suite size, assertions and debt tags at a commit.
 
     Reads the tree at `ref` directly (git grep / ls-tree), so it works for both
     the live HEAD snapshot and the historical points the backfill walks. On a
-    blobless clone it fetches the few blobs it needs on demand.
+    blobless clone it fetches the few blobs it needs on demand. `nyi` and the
+    test counts span the whole subtree; `asserts` and `fixme` are production-only
+    (PROD_EXCLUDES), so test-tree FileCheck / gtest noise stays out of them.
     """
+    prod = PATHS + PROD_EXCLUDES
     return {
         "nyi": _grep_count(ref, NYI_PATTERNS, PATHS),
         "tests": _test_files(ref),
         "test_runs": _grep_count(ref, [RUN_PATTERN], TEST_DIRS),
+        "asserts": _grep_count(ref, ASSERT_PATTERNS, prod),
+        "fixme": _grep_count(ref, DEBT_PATTERNS, prod),
     }
 
 
@@ -432,8 +469,33 @@ def cloc_counts() -> dict | None:
     }
 
 
+def cloc_test_code() -> int | None:
+    """Code lines in the lit test subtrees — the absolute test-input volume.
+
+    Runs over the same materialized checkout as cloc_counts(), so it costs one
+    extra cloc pass and no extra fetch. The whole-subtree `code` figure already
+    includes these lines; this carves out just the test portion — most of it
+    Fortran fixture files — so it can be plotted as its own line. We track the
+    absolute number, not a test-to-production ratio, because that ratio is
+    dominated by language density (terse Fortran fixtures vs verbose C++) and so
+    says little on its own. Returns None (leaving the field absent, a non-fatal
+    self-healing gap) if the test trees aren't present or cloc yields nothing.
+    """
+    targets = [str(REPO / d) for d in TEST_DIRS if (REPO / d).exists()]
+    if not targets:
+        return None
+    try:
+        raw = subprocess.run(["cloc", "--json", "--quiet", *targets],
+                             check=True, capture_output=True, text=True).stdout
+        if not raw.strip():
+            return None
+        return int(json.loads(raw).get("SUM", {}).get("code", 0))
+    except (subprocess.CalledProcessError, json.JSONDecodeError, ValueError):
+        return None
+
+
 def collect_loc(ref: str | None = None) -> dict | None:
-    """Size snapshot at `ref` (HEAD if None): cloc plus the NYI/test metrics."""
+    """Size snapshot at `ref` (HEAD if None): cloc plus the NYI/test/assert metrics."""
     if not shutil.which("cloc"):
         print("  cloc not found — skipping size snapshot", flush=True)
         return None
@@ -442,6 +504,9 @@ def collect_loc(ref: str | None = None) -> dict | None:
     if counts is None:
         return None
     counts.update(code_metrics(ref or "HEAD"))
+    test_code = cloc_test_code()
+    if test_code is not None:
+        counts["test_code"] = test_code
     return counts
 
 
@@ -510,8 +575,10 @@ def main() -> int:
         loc["snapshots"].sort(key=lambda s: s["date"])
         loc["updated_at"] = now
         write_json(LOC, loc)
-        print(f"  {counts['code']:,} code lines, {counts['files']:,} files, "
-              f"{counts['nyi']:,} NYI markers, {counts['tests']:,} test files",
+        print(f"  {counts['code']:,} code lines "
+              f"({counts.get('test_code', 0):,} in tests), {counts['files']:,} files, "
+              f"{counts['nyi']:,} NYI, {counts['asserts']:,} asserts, "
+              f"{counts['fixme']:,} FIXME, {counts['tests']:,} test files",
               flush=True)
 
     return 0

@@ -30,6 +30,16 @@ database — the committed JSON *is* the database.
   churn can't give you.
 - **test-suite size** over time (number of lit test files) — rises as verified
   behaviour is added.
+- **test-code volume** over time (`cloc` lines in the lit test tree, mostly
+  Fortran fixtures) — the absolute test-input trend, tracked as a raw count
+  rather than a language-density-dependent test-to-production ratio.
+- **assertion sites** over time (`assert`, flang's `CHECK` / `CHECK_MSG` / `DIE`,
+  `llvm_unreachable`, `static_assert`, `report_fatal_error`), over production
+  code only — a proxy for how much internal defensive checking the compiler
+  carries, with a per-KLOC-of-C++ density on hover.
+- **FIXME markers** over time, over production code — code-smell technical debt,
+  deliberately kept separate from the NYI markers above (those are *missing
+  features*, not debt); a *rising* line means debt is accruing.
 - all-time scale: total commits, distinct contributors, project age
 
 LLVM `X.Y.0` releases are drawn as dashed vertical markers across every time
@@ -64,8 +74,10 @@ writes three datasets:
   combined and split per path, plus all-time totals
 - `data/releases.json` — `llvmorg-X.Y.0` tags with dates (the chart markers)
 - `data/loc.json` — per-run snapshot of both subtrees: `cloc` size, the
-  not-yet-implemented marker count (`nyi`), and the lit test-suite size
-  (`tests`, plus `test_runs` for `RUN:` directives), appended per run
+  not-yet-implemented marker count (`nyi`), the lit test-suite size (`tests`,
+  plus `test_runs` for `RUN:` directives and `test_code` for its `cloc` lines),
+  and two production-code health counts — assertion sites (`asserts`) and FIXME
+  debt markers (`fixme`) — appended per run
 
 Cloning all of llvm-project is expensive, which is the whole concern. Two
 things keep the cost down:
@@ -182,7 +194,7 @@ data/labels.json              tracked labels (edit this)
 data/history.json             accumulated issue/PR series (machine-written)
 data/activity.json            monthly churn/commits/contributors (machine-written)
 data/releases.json            llvmorg release tags + dates (machine-written)
-data/loc.json                 source-size series (machine-written)
+data/loc.json                 source size + code-health series (machine-written)
 site/index.html               the dashboard (static, no build step)
 .github/workflows/collect.yml schedule + cached clone + commit + Pages deploy
 ```
