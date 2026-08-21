@@ -743,7 +743,28 @@
       "nyi": 656,
       "tests": 4901,
       "test_runs": 8712
+    },
+    {
+      "date": "2026-08-21",
+      "head_sha": "54a930f0912dc7357df076554d94c4045cacfba6",
+      "collected_at": "2026-08-21T06:45:18.232728+00:00",
+      "files": 5261,
+      "code": 467528,
+      "comment": 207407,
+      "blank": 76886,
+      "by_language": {
+        "C++": 258131,
+        "Fortran 90": 116382,
+        "C/C++ Header": 56637,
+        "CMake": 4178,
+        "Python": 930,
+        "Fortran 77": 823,
+        "Other": 30447
+      },
+      "nyi": 661,
+      "tests": 4927,
+      "test_runs": 8789
     }
   ],
-  "updated_at": "2026-08-14T07:25:41.945681+00:00"
+  "updated_at": "2026-08-21T06:45:18.232728+00:00"
 }

@@ -287,6 +287,14 @@
           "merged_prs": 5667,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 133,
+          "closed_issues": 212,
+          "open_prs": 207,
+          "merged_prs": 5723,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
@@ -497,6 +505,14 @@
           "merged_prs": 7,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 85,
+          "closed_issues": 770,
+          "open_prs": 0,
+          "merged_prs": 7,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
@@ -707,6 +723,14 @@
           "merged_prs": 5,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 70,
+          "closed_issues": 502,
+          "open_prs": 0,
+          "merged_prs": 5,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
@@ -917,6 +941,14 @@
           "merged_prs": 1932,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 128,
+          "closed_issues": 412,
+          "open_prs": 98,
+          "merged_prs": 1955,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
@@ -1127,6 +1159,14 @@
           "merged_prs": 544,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 32,
+          "closed_issues": 84,
+          "open_prs": 45,
+          "merged_prs": 551,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
@@ -1337,6 +1377,14 @@
           "merged_prs": 339,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 23,
+          "closed_issues": 157,
+          "open_prs": 3,
+          "merged_prs": 339,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
@@ -1547,6 +1595,14 @@
           "merged_prs": 306,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 1,
+          "closed_issues": 0,
+          "open_prs": 16,
+          "merged_prs": 308,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
@@ -1757,6 +1813,14 @@
           "merged_prs": 85,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 347,
+          "closed_issues": 853,
+          "open_prs": 6,
+          "merged_prs": 85,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
@@ -1967,6 +2031,14 @@
           "merged_prs": 695,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 3,
+          "closed_issues": 5,
+          "open_prs": 14,
+          "merged_prs": 713,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
@@ -2177,6 +2249,14 @@
           "merged_prs": 851,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 25,
+          "closed_issues": 47,
+          "open_prs": 76,
+          "merged_prs": 856,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
@@ -2387,6 +2467,14 @@
           "merged_prs": 4,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 0,
+          "closed_issues": 3,
+          "open_prs": 0,
+          "merged_prs": 4,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
@@ -2597,6 +2685,14 @@
           "merged_prs": 487,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 0,
+          "closed_issues": 0,
+          "open_prs": 18,
+          "merged_prs": 492,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
@@ -2807,10 +2903,18 @@
           "merged_prs": 343,
           "date": "2026-08-14",
           "collected_at": "2026-08-14T07:22:15.069246+00:00"
+        },
+        {
+          "open_issues": 18,
+          "closed_issues": 14,
+          "open_prs": 22,
+          "merged_prs": 343,
+          "date": "2026-08-21",
+          "collected_at": "2026-08-21T06:42:46.609054+00:00"
         }
       ],
       "backfilled": true
     }
   },
-  "updated_at": "2026-08-14T07:22:15.069246+00:00"
+  "updated_at": "2026-08-21T06:42:46.609054+00:00"
 }
