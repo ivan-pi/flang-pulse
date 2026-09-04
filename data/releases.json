@@ -1,6 +1,6 @@
 {
   "repo": "llvm/llvm-project",
-  "updated_at": "2026-08-21T06:45:18.232728+00:00",
+  "updated_at": "2026-09-04T06:22:23.550093+00:00",
   "releases": [
     {
       "tag": "llvmorg-1.0.0",
@@ -246,6 +246,11 @@
       "tag": "llvmorg-22.1.0",
       "version": "22.1.0",
       "date": "2026-02-24"
+    },
+    {
+      "tag": "llvmorg-23.1.0",
+      "version": "23.1.0",
+      "date": "2026-08-25"
     }
   ]
 }
