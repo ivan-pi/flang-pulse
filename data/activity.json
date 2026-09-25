@@ -4,8 +4,8 @@
     "flang",
     "flang-rt"
   ],
-  "head_sha": "d46351c80ee1b1bf356bdb69318069b94853cddf",
-  "updated_at": "2026-09-18T06:21:34.153158+00:00",
+  "head_sha": "b15daae148e77f1ad2e20990094ddbeb8cc598ac",
+  "updated_at": "2026-09-25T06:22:39.399215+00:00",
   "months": [
     {
       "commits": 108,
@@ -372,37 +372,37 @@
       "net": 21163
     },
     {
-      "commits": 174,
-      "insertions": 26097,
-      "deletions": 5271,
-      "files": 767,
+      "commits": 228,
+      "insertions": 39008,
+      "deletions": 10715,
+      "files": 1735,
       "by_path": {
         "flang": {
-          "commits": 164,
-          "insertions": 25028,
-          "deletions": 4803,
-          "files": 721
+          "commits": 215,
+          "insertions": 37621,
+          "deletions": 10170,
+          "files": 1672
         },
         "flang-rt": {
-          "commits": 18,
-          "insertions": 1069,
-          "deletions": 468,
-          "files": 46
+          "commits": 25,
+          "insertions": 1387,
+          "deletions": 545,
+          "files": 63
         }
       },
-      "active_rolling": 114,
+      "active_rolling": 116,
       "month": "2026-09",
-      "authors": 67,
-      "new_authors": 9,
-      "churn": 31368,
-      "net": 20826
+      "authors": 71,
+      "new_authors": 11,
+      "churn": 49723,
+      "net": 28293
     }
   ],
   "totals": {
-    "commits": 2751,
-    "authors": 245,
+    "commits": 2805,
+    "authors": 247,
     "first_commit": "2025-07-15",
-    "last_commit": "2026-09-17"
+    "last_commit": "2026-09-24"
   },
   "since_commit": "3623fe6"
 }
