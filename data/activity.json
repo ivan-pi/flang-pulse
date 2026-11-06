@@ -4,8 +4,8 @@
     "flang",
     "flang-rt"
   ],
-  "head_sha": "7700e31e581d5380ded5e0b0b5709c8cc33b94c3",
-  "updated_at": "2026-10-30T06:17:01.525252+00:00",
+  "head_sha": "0dfd901f375793105872436d77d505a7f2343b42",
+  "updated_at": "2026-11-06T06:16:28.087048+00:00",
   "months": [
     {
       "commits": 108,
@@ -398,16 +398,16 @@
       "net": 32283
     },
     {
-      "commits": 240,
-      "insertions": 65338,
-      "deletions": 18741,
-      "files": 2520,
+      "commits": 247,
+      "insertions": 66453,
+      "deletions": 19612,
+      "files": 2534,
       "by_path": {
         "flang": {
-          "commits": 227,
-          "insertions": 64206,
-          "deletions": 18409,
-          "files": 2449
+          "commits": 234,
+          "insertions": 65321,
+          "deletions": 19280,
+          "files": 2463
         },
         "flang-rt": {
           "commits": 24,
@@ -416,19 +416,45 @@
           "files": 71
         }
       },
-      "active_rolling": 122,
+      "active_rolling": 124,
       "month": "2026-10",
-      "authors": 82,
-      "new_authors": 11,
-      "churn": 84079,
-      "net": 46597
+      "authors": 84,
+      "new_authors": 13,
+      "churn": 86065,
+      "net": 46841
+    },
+    {
+      "commits": 46,
+      "insertions": 12054,
+      "deletions": 4785,
+      "files": 331,
+      "by_path": {
+        "flang": {
+          "commits": 45,
+          "insertions": 12009,
+          "deletions": 4755,
+          "files": 328
+        },
+        "flang-rt": {
+          "commits": 2,
+          "insertions": 45,
+          "deletions": 30,
+          "files": 3
+        }
+      },
+      "active_rolling": 118,
+      "month": "2026-11",
+      "authors": 27,
+      "new_authors": 3,
+      "churn": 16839,
+      "net": 7269
     }
   ],
   "totals": {
-    "commits": 3078,
-    "authors": 263,
+    "commits": 3131,
+    "authors": 269,
     "first_commit": "2025-07-15",
-    "last_commit": "2026-10-29"
+    "last_commit": "2026-11-05"
   },
   "since_commit": "3623fe6"
 }
